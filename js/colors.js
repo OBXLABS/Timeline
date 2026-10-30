@@ -7,12 +7,12 @@
 const COLORS = {
   bgDark:      '#f0f3f5',  // main dark background (canvas, print background)
   panelBg:     '#f0f3f5',  // header / row-label panel background
-  stripeDark:  '#dde0e1',  // darker alternating row stripe
+  stripeDark:  '#f0f3f5',  // darker alternating row stripe
   stripeLight: '#f0f3f5',  // lighter alternating row stripe / fine gridlines
-  border:      '#dde0e1',  // panel borders, dividers, default gridlines/ticks
-  textDim:     '#4b5563',  // dim label text
-  textMuted:   '#6b7280',  // muted text, month-axis mid ticks
-  textSubtle:  '#ffffff',  // subtle text, month-axis year ticks
+  border:      '#384853',  // panel borders, dividers, default gridlines/ticks
+  textDim:     '#384853',  // dim label text
+  textMuted:   '#384853',  // muted text, month-axis mid ticks
+  textSubtle:  '#384853',  // subtle text, month-axis year ticks
   textLight:   '#000000',  // light label text
   white:       '#000000',  // white text / strokes
   accent:      '#6366f1',  // primary accent (links, buttons, highlights)

@@ -27,10 +27,10 @@
   --color-text-subtle: #9ca3af;  /* subtle secondary text */
   --color-text-muted: #b5b7b9;   /* muted tertiary text */
   --color-text-dim: #4b5563;     /* dim placeholder / faint text */
-  --color-white: #000000;        /* white text / active states */
+  --color-white: #444547;        /* white text / active states */
   --color-accent: #0b3fac;       /* primary accent (links, focus, checkboxes) */
   --color-accent-light: #0b3fac; /* accent hover state */
-  --color-amber: #fbab1b;        /* amber highlight (titles, resizer) */
+  --color-amber: #FD1901;        /* amber highlight (titles, resizer) */
   --color-amber-dark: #fbab1b;   /* amber hover/active state */
   --color-green: #10b981;        /* collaborator tag accent */
 }

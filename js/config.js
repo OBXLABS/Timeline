@@ -23,8 +23,8 @@ const NS      = 'http://www.w3.org/2000/svg';
 // ];
 // Olivia Test Palete
 const PALETTE = [
-  '#FFC117','#8531C4','#E02830','#1C8756',
-  '#FF801C','#1852CC','#DE217D','#0BB3AA',
+  '#0B3FAC','#6C87FC','#A4B1FD','#CA8C2A',
+  '#FBB03B','#BA0F01','#FD1901','#FE5200',
   '#f97316','#84cc16','#06b6d4','#a855f7'
 ];
 
