@@ -417,7 +417,7 @@ function redraw() {
   for (const d of majDates) {
     const x = tsToX(d.getTime());
     if (x < LABEL_W || x > W) continue;
-    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.border, 'stroke-width': 1 }));
+    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.stripeLight, 'stroke-width': 1 }));
   }
   tlSvg.appendChild(gridG);
 
