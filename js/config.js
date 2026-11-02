@@ -15,12 +15,6 @@ const LANE_H  = BAR_H + 8;  // height per lane
 const LANE_PAD = 10;          // top/bottom padding within a row
 const NS      = 'http://www.w3.org/2000/svg';
 
-// ── Color palette (per category) ─────────────────────────────────────────
-// const PALETTE = [
-//   '#6366f1','#ec4899','#8b5cf6','#10b981',
-//   '#3b82f6','#ef4444','#f59e0b','#14b8a6',
-//   '#f97316','#84cc16','#06b6d4','#a855f7'
-// ];
 // Olivia Test Palete
 const PALETTE = [
   '#0B3FAC','#6C87FC','#A4B1FD','#CA8C2A',
