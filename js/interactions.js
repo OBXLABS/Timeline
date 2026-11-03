@@ -373,6 +373,12 @@ searchRelBtn.addEventListener('click', () => {
   searchQuery = ''; // force re-run on next search
 });
 
+document.getElementById('search-clear').addEventListener('click', () => {
+  searchInput.value = '';
+  searchInput.dispatchEvent(new Event('input')); // reuses the empty-input reset below
+  searchInput.focus();
+});
+
 searchInput.addEventListener('input', () => {
   if (!searchInput.value.trim()) { searchResults = []; searchIdx = -1; searchQuery = ''; searchMatchSet = new Set(); updateSearchUI(); redraw(); }
 });

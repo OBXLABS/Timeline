@@ -56,11 +56,12 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--colo
 #search-input:focus { border-color: var(--color-accent); }
 #search-input::placeholder { color: var(--color-text-dim); }
 #search-count { font-size: 11px; color: var(--color-text-muted); white-space: nowrap; margin-left: auto; }
-#search-nav-row { display: flex; gap: 4px; align-items: center; }
+#search-nav-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .search-nav-btn { background: none; border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text-subtle); font-size: 10px; padding: 4px 6px; cursor: pointer; flex-shrink: 0; line-height: 1; }
 .search-nav-btn:hover:not(:disabled) { color: var(--color-text); background: var(--color-border); }
 .search-nav-btn:disabled { opacity: 0.25; cursor: default; }
-#search-mode-toggle { display: inline-flex; border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden; margin-left: 4px; }
+#search-clear { margin-left: 4px; font-size: 11px; padding: 3px 7px; }
+#search-mode-toggle { display: inline-flex; border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden; margin-left: 4px; flex-shrink: 0; }
 .search-mode-btn { background: none; border: none; color: var(--color-text-muted); font-size: 11px; cursor: pointer; padding: 3px 7px; line-height: 1; }
 .search-mode-btn:hover { color: var(--color-text); }
 .search-mode-btn.active { background: var(--color-border); color: var(--color-text); }
@@ -248,6 +249,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--colo
   #search-input { min-height: 44px; font-size: 16px; padding: 0 12px; border-radius: 8px; }
   /* Search Nav────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
   .search-nav-btn { min-width: 44px; min-height: 44px; font-size: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+  #search-clear { width: auto; padding: 0 10px; font-size: 14px; }
   .search-mode-btn { min-width: 44px; min-height: 44px; font-size: 14px; display: flex; align-items: center; justify-content: center; }
   .search-nav-btn:active:not(:disabled) { background: var(--color-border); color: var(--color-text); }
   .search-mode-btn:active { background: var(--color-text-dim); color: var(--color-text); }
