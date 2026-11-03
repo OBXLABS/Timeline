@@ -214,8 +214,8 @@ function buildExportSVG(y1, y2) {
   const eTsToX = ts => (ts - exportStartTs) * exportScale + EXPORT_LABEL_W;
 
   // Same filter logic as redraw() — via shared isEventVisible()
-  const visGroups = groups.filter(g => groupVis.has(g));
-  const visEvs = events.filter(isEventVisible);
+  const visEvs    = events.filter(isEventVisible);
+  const visGroups = visibleGroups(visEvs);
 
   // Group Y positions (same logic as redraw)
   const expGroupY = {};

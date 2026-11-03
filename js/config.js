@@ -35,7 +35,7 @@ let programVis = new Set();
 let projVis   = new Set();
 let categoryGroups = [];          // [{ title, items }] — category accordion groups; one entry per source document
 let accordionState = new Map();   // section title → boolean (true = expanded); persists across buildFilters() calls
-let dimLabels = { orgs: 'Group', programs: 'Program', projects: 'Project' }; // renamed per format
+let dimLabels = { orgs: 'Group', programs: 'Program', projects: 'Projects' }; // renamed per format
 let VIEW_MODE       = 'sections'; // 'sections' | 'themes'
 let hasEnrichedData = false;
 let themeRows       = [];         // all themes sorted by event-count desc
@@ -46,9 +46,9 @@ let themeY          = {};         // theme → cumulative Y (built in redraw)
 let themeLaneCounts = {};         // theme → lane count
 let themeLanes      = {};         // theme → { evId → lane index }
 let programGroups  = []; // [{ label, items }] — sub-groups within Funding Agency; CV only
-let eventsByGroup  = new Map(); // group → Event[] index; built in parse(), used by syncCategoryVis/syncDimVis
 const hasFineMouse = () => window.matchMedia('(pointer: fine)').matches; // true on mouse/trackpad, false on touch
 let minTs, maxTs;
+let laneMinEffMs = 86400000; // min effective event width used for lane stacking; set in parse()
 let laneCounts = {};   // group -> number of lanes needed
 let rowHeights = {};   // group -> row height in px
 let groupY     = {};   // group -> cumulative Y offset (updated each redraw)

@@ -317,7 +317,7 @@ function jumpToEvent(ev) {
 function runSearch(q) {
   searchQuery = q;
   searchResults = events.filter(ev =>
-    [ev.headline, ev.description, ev.group, ev.org, ev.program, ev.project, ev.teamMembers, ev.funders]
+    [ev.headline, ev.description, ev.group, ev.org, ev.program, ev.projects.join(', '), ev.teamMembers, ev.funders]
       .some(f => f && f.toLowerCase().includes(q))
   ).sort((a, b) => a.startTs - b.startTs);
 

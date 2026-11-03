@@ -1,9 +1,10 @@
 // ── Lane stacking ─────────────────────────────────────────────────────────
+// Stacks only the currently visible events, so rows shrink to fit when filters hide events.
 function computeLanes(minEffMs = 86400000) {
   laneCounts = {};
   rowHeights = {};
   for (const g of groups) {
-    const gEvs = events.filter(e => e.group === g).sort((a, b) => a.startTs - b.startTs);
+    const gEvs = events.filter(e => e.group === g && isEventVisible(e)).sort((a, b) => a.startTs - b.startTs);
     const laneEnds = []; // effective end ts of last event placed in each lane
     for (const ev of gEvs) {
       const effEnd = Math.max(ev.endTs, ev.startTs + minEffMs);
@@ -63,7 +64,7 @@ function fitView() {
 
 function fitAll() {
   const W     = wrap.clientWidth;
-  const range = Math.max(Date.now() - AXIS_START, 86400000);
+  const range = Math.max(Math.max(Date.now(), maxTs) - AXIS_START, 86400000); // through today or the last event's end, whichever is later
   scale = (W - LABEL_W - 20) / range;
   panX  = -(AXIS_START - minTs) * scale;
   redraw();
@@ -178,8 +179,8 @@ function generateTicks(addFn, start, end) {
 // ── Month axis (top or bottom) ────────────────────────────────────────────
 // fromBottom=false → ticks hang down from top edge; fromBottom=true → ticks rise from bottom edge
 function drawMonthAxis(svgEl, W, axisH, fromBottom, cpId) {
-  const now   = new Date();
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 1); // start of next month
+  const last  = new Date(Math.max(Date.now(), maxTs));                // today, or the latest event end if that is later
+  const end   = new Date(last.getFullYear(), last.getMonth() + 1, 1); // start of the month after
   const defs  = mk('defs');
   const cp    = mk('clipPath', { id: cpId });
   cp.appendChild(mk('rect', { x: LABEL_W, y: 0, width: W - LABEL_W, height: axisH }));
@@ -311,17 +312,22 @@ function drawEventBar(evG, ev, barTop, color, W, rowEvs) {
 
 // ── Event visibility ──────────────────────────────────────────────────────
 function isEventVisible(e) {
-  if (!groupVis.has(e.group)) return false;
-  // OR logic across Group / Program / Project:
-  // events with no tags in these dimensions always show;
-  // tagged events show if any one of their tags is checked
-  const noTags = orgs.length === 0 && programs.length === 0 && projects.length === 0;
-  if (noTags) return true;
-  const hasTag = e.org !== '' || e.program !== '' || e.project !== '';
-  if (!hasTag) return true;
-  return (e.org     !== '' && orgVis.has(e.org))         ||
-         (e.program !== '' && programVis.has(e.program)) ||
-         (e.project !== '' && projVis.has(e.project));
+  // Each filter section works on its own; an event must pass all of them.
+  if (!groupVis.has(e.group)) return false;                                    // Category
+  if (projects.length) {                                                       // Projects: any listed project checked
+    const tags = e.projects.length ? e.projects : [NO_PROJECT];
+    if (!tags.some(p => projVis.has(p))) return false;
+  }
+  if (orgs.length     && e.org     && !orgVis.has(e.org))         return false; // CV data only
+  if (programs.length && e.program && !programVis.has(e.program)) return false; // CV data only
+  return true;
+}
+
+// Category rows to draw: checked AND still holding at least one visible event
+// (so filtering by project doesn't leave empty rows behind).
+function visibleGroups(visEvs) {
+  const withEvents = new Set(visEvs.map(e => e.group));
+  return groups.filter(g => groupVis.has(g) && withEvents.has(g));
 }
 
 // ── Main render ───────────────────────────────────────────────────────────
@@ -332,7 +338,8 @@ function redraw() {
   const isThemes  = VIEW_MODE === 'themes' && hasEnrichedData;
   const W         = wrap.clientWidth;
 
-  const visGroups = groups.filter(g => groupVis.has(g));
+  if (_visEvsDirty) { _visEvsCache = events.filter(isEventVisible); _visEvsDirty = false; }
+  const visGroups = visibleGroups(_visEvsCache);
   const visThemes = themeRows.filter(t => themeVis.has(t));
   const visRows   = isThemes ? visThemes : visGroups;
   const rowH      = isThemes ? (r => themeRowH[r]) : (r => rowHeights[r] || ROW_H);

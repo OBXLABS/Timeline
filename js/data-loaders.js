@@ -267,9 +267,8 @@ function parseGDoc(html) {
       const [start, end] = gdocParseDateRange(cleanDate);
       if (start) {
         const restClean = rest.replace(/\xa0/g, ' ').replace(/\s*\{[^}]*\}\s*$/, '').trim();
-        const headlineVal = entryLink.url ? `<a href="${entryLink.url}">${restClean}</a>` : restClean;
         const row = { 'start date': start, 'end date': end || start,
-          'headline': headlineVal, 'headline link label': entryLink.url ? entryLink.label : '',
+          'headline': restClean, 'link': entryLink.url || '', 'headline link label': entryLink.url ? entryLink.label : '',
           'description': '', 'group': group, 'project': GDOC_PROJECT_MAP[group] || '' };
         rows.push(row); lastRow = row;
         continue;
@@ -292,9 +291,8 @@ function parseGDoc(html) {
       const year = years[years.length - 1];
       const d = gdocFmt(year);
       const titleText = gdocExtractTitle(cleanFull);
-      const headlineVal = entryLink.url ? `<a href="${entryLink.url}">${titleText}</a>` : titleText;
       const row = { 'start date': d, 'end date': d,
-        'headline': headlineVal, 'headline link label': entryLink.url ? entryLink.label : '',
+        'headline': titleText, 'link': entryLink.url || '', 'headline link label': entryLink.url ? entryLink.label : '',
         'description': cleanFull, 'group': group, 'project': GDOC_PROJECT_MAP[group] || '' };
       rows.push(row); lastRow = row;
     }
