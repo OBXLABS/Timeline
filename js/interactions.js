@@ -112,11 +112,11 @@ async function renderMedia(ev, container) {
       const imgUrl = data.media_url || data.thumbnail_url;
       const imgHtml = imgUrl
         ? `<img src="${imgUrl}" alt="${data.title || ''}">`
-        : `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.accent}">View photo ↗</a>`;
+        : `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>`;
       container.innerHTML = imgHtml + metaHtml(ev.mediaCaption, ev.mediaCredit || data.author_name);
     } catch {
       if (activeDrawerId === targetId)
-        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.accent}">View photo ↗</a>${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
+        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
     }
     return;
   }

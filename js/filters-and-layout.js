@@ -453,9 +453,9 @@ function buildFiltersAccordion() {
     filDiv.appendChild(sec);
   };
 
-  if (orgs.length)     addSection(dimLabels.orgs,     orgs,     orgVis,     () => COLORS.textMuted, true,  false);
-  if (programs.length) addSection(dimLabels.programs, programs, programVis, () => COLORS.textMuted, true,  false, programGroups.length ? programGroups : null);
-  if (projects.length) addSection(dimLabels.projects, projects, projVis,    () => COLORS.textMuted, true,  false);
+  if (orgs.length)     addSection(dimLabels.orgs,     orgs,     orgVis,     () => COLORS.slate, true,  false);
+  if (programs.length) addSection(dimLabels.programs, programs, programVis, () => COLORS.slate, true,  false, programGroups.length ? programGroups : null);
+  if (projects.length) addSection(dimLabels.projects, projects, projVis,    () => COLORS.slate, true,  false);
   for (const grp of categoryGroups) {
     addSection(grp.title, grp.items, groupVis, g => groupColor[g], false, true, grp.subGroups || null);
   }

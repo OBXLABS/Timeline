@@ -9,7 +9,7 @@ const DATA_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSm4iN
 const loadStatusEl = document.getElementById('load-status');
 const emptyMsgEl   = document.getElementById('empty-msg');
 function setLoadStatus(state, text) {
-  const color = state === 'ok' ? COLORS.success : state === 'error' ? COLORS.error : COLORS.textMuted;
+  const color = state === 'ok' ? COLORS.success : state === 'error' ? COLORS.error : COLORS.slate;
   loadStatusEl.textContent = text;
   loadStatusEl.style.color = color;
   if (state !== 'ok') emptyMsgEl.textContent = text;
