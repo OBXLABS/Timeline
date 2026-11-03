@@ -280,7 +280,7 @@ function zoom(factor, pivotX) {
 
 function doZoomIn()  { zoom(1.5,     wrap.clientWidth / 2); }
 function doZoomOut() { zoom(1 / 1.5, wrap.clientWidth / 2); }
-function doToday()   { panX = wrap.clientWidth - LABEL_W - (Date.now() - minTs) * scale; redraw(); }
+function doToday()   { panX = (wrap.clientWidth - LABEL_W) / 2 - (Date.now() - minTs) * scale; redraw(); } // centre today in the event area
 
 document.getElementById('btn-zoomin') .addEventListener('click', doZoomIn);
 document.getElementById('btn-zoomout').addEventListener('click', doZoomOut);
