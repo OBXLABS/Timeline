@@ -112,11 +112,11 @@ async function renderMedia(ev, container) {
       const imgUrl = data.media_url || data.thumbnail_url;
       const imgHtml = imgUrl
         ? `<img src="${imgUrl}" alt="${data.title || ''}">`
-        : `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.accent}">View photo ↗</a>`;
+        : `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>`;
       container.innerHTML = imgHtml + metaHtml(ev.mediaCaption, ev.mediaCredit || data.author_name);
     } catch {
       if (activeDrawerId === targetId)
-        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.accent}">View photo ↗</a>${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
+        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
     }
     return;
   }
@@ -280,7 +280,7 @@ function zoom(factor, pivotX) {
 
 function doZoomIn()  { zoom(1.5,     wrap.clientWidth / 2); }
 function doZoomOut() { zoom(1 / 1.5, wrap.clientWidth / 2); }
-function doToday()   { panX = wrap.clientWidth - LABEL_W - (Date.now() - minTs) * scale; redraw(); }
+function doToday()   { panX = (wrap.clientWidth - LABEL_W) / 2 - (Date.now() - minTs) * scale; redraw(); } // centre today in the event area
 
 document.getElementById('btn-zoomin') .addEventListener('click', doZoomIn);
 document.getElementById('btn-zoomout').addEventListener('click', doZoomOut);
@@ -317,7 +317,7 @@ function jumpToEvent(ev) {
 function runSearch(q) {
   searchQuery = q;
   searchResults = events.filter(ev =>
-    [ev.headline, ev.description, ev.group, ev.org, ev.program, ev.project, ev.teamMembers, ev.funders]
+    [ev.headline, ev.description, ev.group, ev.org, ev.program, ev.projects.join(', '), ev.teamMembers, ev.funders]
       .some(f => f && f.toLowerCase().includes(q))
   ).sort((a, b) => a.startTs - b.startTs);
 

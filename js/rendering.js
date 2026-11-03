@@ -1,9 +1,10 @@
 // ── Lane stacking ─────────────────────────────────────────────────────────
+// Stacks only the currently visible events, so rows shrink to fit when filters hide events.
 function computeLanes(minEffMs = 86400000) {
   laneCounts = {};
   rowHeights = {};
   for (const g of groups) {
-    const gEvs = events.filter(e => e.group === g).sort((a, b) => a.startTs - b.startTs);
+    const gEvs = events.filter(e => e.group === g && isEventVisible(e)).sort((a, b) => a.startTs - b.startTs);
     const laneEnds = []; // effective end ts of last event placed in each lane
     for (const ev of gEvs) {
       const effEnd = Math.max(ev.endTs, ev.startTs + minEffMs);
@@ -63,7 +64,7 @@ function fitView() {
 
 function fitAll() {
   const W     = wrap.clientWidth;
-  const range = Math.max(Date.now() - AXIS_START, 86400000);
+  const range = Math.max(Math.max(Date.now(), maxTs) - AXIS_START, 86400000); // through today or the last event's end, whichever is later
   scale = (W - LABEL_W - 20) / range;
   panX  = -(AXIS_START - minTs) * scale;
   redraw();
@@ -178,8 +179,8 @@ function generateTicks(addFn, start, end) {
 // ── Month axis (top or bottom) ────────────────────────────────────────────
 // fromBottom=false → ticks hang down from top edge; fromBottom=true → ticks rise from bottom edge
 function drawMonthAxis(svgEl, W, axisH, fromBottom, cpId) {
-  const now   = new Date();
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 1); // start of next month
+  const last  = new Date(Math.max(Date.now(), maxTs));                // today, or the latest event end if that is later
+  const end   = new Date(last.getFullYear(), last.getMonth() + 1, 1); // start of the month after
   const defs  = mk('defs');
   const cp    = mk('clipPath', { id: cpId });
   cp.appendChild(mk('rect', { x: LABEL_W, y: 0, width: W - LABEL_W, height: axisH }));
@@ -206,32 +207,33 @@ function drawMonthAxis(svgEl, W, axisH, fromBottom, cpId) {
 
     // Tick height: Jan=full, July=medium, Apr/Oct=25% above regular, other=short
     const tickLen = isJan ? 18 : isJuly ? 12 : isQuart ? 8 : 5;
-    const stroke  = isJan ? COLORS.textSubtle : isJuly || isQuart ? COLORS.textMuted : COLORS.border;
+    const stroke  = isJan ? COLORS.slate : isJuly || isQuart ? COLORS.slate : COLORS.slate;
     const sw      = 3;
 
     if (x >= LABEL_W - 1 && x <= W + 1) {
+      const onDivider = Math.abs(x - LABEL_W) < 2; // tick would merge with the category | timeline divider; keep its label only
       if (fromBottom) {
         // ticks point upward from y=0
-        g.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: tickLen, stroke, 'stroke-width': sw }));
+        if (!onDivider) g.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: tickLen, stroke, 'stroke-width': sw }));
         if (isJan && d.getFullYear() % yearStep === 0) {
           g.appendChild(svgTxt(x + 3, tickLen + 11, String(d.getFullYear()), {
-            fill: COLORS.textSubtle, 'font-size': 11, 'font-weight': '600'
+            fill: COLORS.slate, 'font-size': 11, 'font-weight': '600'
           }));
         } else if (monthFmt) {
           g.appendChild(svgTxt(x + 3, tickLen + 11, d.toLocaleString('en-US', { month: monthFmt }), {
-            fill: COLORS.textMuted, 'font-size': 10, 'font-weight': '500'
+            fill: COLORS.slate, 'font-size': 10, 'font-weight': '500'
           }));
         }
       } else {
         // ticks point downward from y=axisH
-        g.appendChild(mk('line', { x1: x, y1: axisH - tickLen, x2: x, y2: axisH, stroke, 'stroke-width': sw }));
+        if (!onDivider) g.appendChild(mk('line', { x1: x, y1: axisH - tickLen, x2: x, y2: axisH, stroke, 'stroke-width': sw }));
         if (isJan && d.getFullYear() % yearStep === 0) {
           g.appendChild(svgTxt(x + 3, axisH - tickLen - 4, String(d.getFullYear()), {
-            fill: COLORS.textSubtle, 'font-size': 11, 'font-weight': '600'
+            fill: COLORS.slate, 'font-size': 11, 'font-weight': '600'
           }));
         } else if (monthFmt) {
           g.appendChild(svgTxt(x + 3, axisH - tickLen - 4, d.toLocaleString('en-US', { month: monthFmt }), {
-            fill: COLORS.textMuted, 'font-size': 10, 'font-weight': '500'
+            fill: COLORS.slate, 'font-size': 10, 'font-weight': '500'
           }));
         }
       }
@@ -266,13 +268,13 @@ function drawEventBar(evG, ev, barTop, color, W, rowEvs) {
       const label  = ev.headline.length > maxCh ? ev.headline.slice(0, maxCh - 1) + '…' : ev.headline;
       const textY  = barTop + BAR_H / 2 + 4;
       const textEl = svgTxt(lx, textY, label, {
-        fill: COLORS.white, 'font-size': 11, 'font-weight': '500'
+        fill: COLORS.black, 'font-size': 11, 'font-weight': '500'
       });
       g.appendChild(textEl);
       const textW = label.length * 7; // O7: heuristic matches truncation estimate (no layout flush)
       g.appendChild(mk('line', {
         x1: lx, y1: textY + 2, x2: lx + textW, y2: textY + 2,
-        stroke: COLORS.white, 'stroke-width': 2, 'stroke-opacity': 0.7,
+        stroke: COLORS.black, 'stroke-width': 2, 'stroke-opacity': 0.7,
         style: 'pointer-events:none'
       }));
     }
@@ -292,7 +294,7 @@ function drawEventBar(evG, ev, barTop, color, W, rowEvs) {
         const label  = ev.headline.length > maxCh ? ev.headline.slice(0, maxCh - 1) + '…' : ev.headline;
         const textY  = barTop + BAR_H / 2 + 4;
         const textEl = svgTxt(lx, textY, label, {
-          fill: COLORS.textLight, 'font-size': 11, 'font-weight': '500'
+          fill: COLORS.black, 'font-size': 11, 'font-weight': '500'
         });
         g.appendChild(textEl);
         const textW = label.length * 7; // O7: heuristic matches truncation estimate (no layout flush)
@@ -310,17 +312,22 @@ function drawEventBar(evG, ev, barTop, color, W, rowEvs) {
 
 // ── Event visibility ──────────────────────────────────────────────────────
 function isEventVisible(e) {
-  if (!groupVis.has(e.group)) return false;
-  // OR logic across Group / Program / Project:
-  // events with no tags in these dimensions always show;
-  // tagged events show if any one of their tags is checked
-  const noTags = orgs.length === 0 && programs.length === 0 && projects.length === 0;
-  if (noTags) return true;
-  const hasTag = e.org !== '' || e.program !== '' || e.project !== '';
-  if (!hasTag) return true;
-  return (e.org     !== '' && orgVis.has(e.org))         ||
-         (e.program !== '' && programVis.has(e.program)) ||
-         (e.project !== '' && projVis.has(e.project));
+  // Each filter section works on its own; an event must pass all of them.
+  if (!groupVis.has(e.group)) return false;                                    // Category
+  if (projects.length) {                                                       // Projects: any listed project checked
+    const tags = e.projects.length ? e.projects : [NO_PROJECT];
+    if (!tags.some(p => projVis.has(p))) return false;
+  }
+  if (orgs.length     && e.org     && !orgVis.has(e.org))         return false; // CV data only
+  if (programs.length && e.program && !programVis.has(e.program)) return false; // CV data only
+  return true;
+}
+
+// Category rows to draw: checked AND still holding at least one visible event
+// (so filtering by project doesn't leave empty rows behind).
+function visibleGroups(visEvs) {
+  const withEvents = new Set(visEvs.map(e => e.group));
+  return groups.filter(g => groupVis.has(g) && withEvents.has(g));
 }
 
 // ── Main render ───────────────────────────────────────────────────────────
@@ -331,7 +338,8 @@ function redraw() {
   const isThemes  = VIEW_MODE === 'themes' && hasEnrichedData;
   const W         = wrap.clientWidth;
 
-  const visGroups = groups.filter(g => groupVis.has(g));
+  if (_visEvsDirty) { _visEvsCache = events.filter(isEventVisible); _visEvsDirty = false; }
+  const visGroups = visibleGroups(_visEvsCache);
   const visThemes = themeRows.filter(t => themeVis.has(t));
   const visRows   = isThemes ? visThemes : visGroups;
   const rowH      = isThemes ? (r => themeRowH[r]) : (r => rowHeights[r] || ROW_H);
@@ -360,13 +368,15 @@ function redraw() {
   hdrSvg.setAttribute('width', W);
   hdrSvg.setAttribute('height', HDR_H);
   hdrSvg.innerHTML = '';
-  hdrSvg.appendChild(mk('rect', { x: 0, y: 0, width: W, height: HDR_H, fill: COLORS.panelBg }));
-  hdrSvg.appendChild(mk('rect', { x: 0, y: 0, width: LABEL_W, height: HDR_H, fill: COLORS.panelBg }));
-  hdrSvg.appendChild(mk('line', { x1: LABEL_W, y1: 0, x2: LABEL_W, y2: HDR_H, stroke: COLORS.border, 'stroke-width': 1 }));
+  hdrSvg.appendChild(mk('rect', { x: 0, y: 0, width: W, height: HDR_H, fill: COLORS.lightGray }));
+  hdrSvg.appendChild(mk('rect', { x: 0, y: 0, width: LABEL_W, height: HDR_H, fill: COLORS.lightGray }));
   hdrSvg.appendChild(svgTxt(12, HDR_H / 2 + 4, isThemes ? 'THEME' : 'CATEGORY', {
-    fill: COLORS.textDim, 'font-size': 10, 'font-weight': '700', 'letter-spacing': '0.08em'
+    fill: COLORS.slate, 'font-size': 10, 'font-weight': '700', 'letter-spacing': '0.08em'
   }));
   drawMonthAxis(hdrSvg, W, HDR_H, false, 'cpHdr');
+  // Category | timeline divider: a 0.5px strip right of LABEL_W, i.e. exactly the visible part of the
+  // body's 1px divider (whose left half is covered by the row-label backgrounds), so all three line up
+  hdrSvg.appendChild(mk('rect', { x: LABEL_W, y: 0, width: 0.5, height: HDR_H, fill: COLORS.slate }));
 
   // ── Defs (clip paths) ────────────────────────────────────────────────
   const defs = mk('defs');
@@ -376,7 +386,7 @@ function redraw() {
   tlSvg.appendChild(defs);
 
   // ── Background ────────────────────────────────────────────────────────
-  tlSvg.appendChild(mk('rect', { x: 0, y: 0, width: W, height: H, fill: COLORS.bgDark }));
+  tlSvg.appendChild(mk('rect', { x: 0, y: 0, width: W, height: H, fill: COLORS.lightGray }));
 
   // ── Tick lines + row backgrounds (clipped) ───────────────────────────
   // Tick config changes at 6 discrete scale thresholds; cache until threshold or data changes.
@@ -399,11 +409,7 @@ function redraw() {
     const rh = rowH(r);
     gridG.appendChild(mk('rect', {
       x: LABEL_W, y, width: W - LABEL_W, height: rh,
-      fill: i % 2 === 0 ? COLORS.stripeDark : COLORS.bgDark
-    }));
-    gridG.appendChild(mk('line', {
-      x1: LABEL_W, y1: y + rh, x2: W, y2: y + rh,
-      stroke: COLORS.panelBg, 'stroke-width': 1
+      fill: COLORS.lightGray
     }));
   });
 
@@ -411,14 +417,22 @@ function redraw() {
   for (const d of minDates) {
     const x = tsToX(d.getTime());
     if (x < LABEL_W || x > W) continue;
-    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.stripeLight, 'stroke-width': 1 }));
+    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.lightGray, 'stroke-width': 1 }));
   }
   // Major grid lines
   for (const d of majDates) {
     const x = tsToX(d.getTime());
     if (x < LABEL_W || x > W) continue;
-    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.stripeLight, 'stroke-width': 1 }));
+    gridG.appendChild(mk('line', { x1: x, y1: 0, x2: x, y2: H, stroke: COLORS.lightGray, 'stroke-width': 1 }));
   }
+  // Row dividers — continue the label column's category separators across the event area
+  // (drawn after the grid lines so the vertical lines don't break them up)
+  visRows.forEach(r => {
+    const yb = (isThemes ? themeY[r] : groupY[r]) + rowH(r);
+    // Drawn as a 0.25px strip just above the boundary: that is exactly the visible part of the label
+    // column's 0.5px line (the next row's background covers its lower half), so both look identical
+    gridG.appendChild(mk('rect', { x: LABEL_W, y: yb - 0.25, width: W - LABEL_W, height: 0.25, fill: COLORS.slate }));
+  });
   tlSvg.appendChild(gridG);
 
   // ── Past watermark ────────────────────────────────────────────────────
@@ -430,7 +444,7 @@ function redraw() {
       [wX, 215, 'ka wā ma hope'],
     ].forEach(([x, y, s]) => {
       pastWatermarkG.appendChild(svgTxt(x, y, s, {
-        fill: COLORS.watermark, 'font-size': 100, 'text-anchor': 'end',
+        fill: COLORS.yellow, 'font-size': 100, 'text-anchor': 'end',
         'font-family': 'Nunito, system-ui, sans-serif', 'font-weight': 700,
       }));
     });
@@ -453,7 +467,7 @@ function redraw() {
       [wX, 215, 'Indigenous'],
     ].forEach(([x, y, s]) => {
       futureWatermarkG.appendChild(svgTxt(x, y, s, {
-        fill: COLORS.watermark, 'font-size': 100, 'text-anchor': 'start',
+        fill: COLORS.yellow, 'font-size': 100, 'text-anchor': 'start',
         'font-family': 'Nunito, system-ui, sans-serif', 'font-weight': 700,
       }));
     });
@@ -464,6 +478,29 @@ function redraw() {
 
   crosshairSvgH = H;
   crosshairG    = null; // re-created on every mousemove, inserted before evG
+
+  // ── Today marker (clipped to event area; drawn before events so it sits underneath them) ─────────────────────────────
+  const todayX = tsToX(Date.now());
+  if (todayX >= LABEL_W && todayX <= W) {
+    const todayG = mk('g', { 'clip-path': 'url(#cpE)' });
+    // Vertical line
+    todayG.appendChild(mk('line', {
+      x1: todayX, y1: 0, x2: todayX, y2: H,
+      stroke: COLORS.red, 'stroke-width': 1.5, 'stroke-dasharray': '4 3'
+    }));
+    // Triangle at top (pointing down into timeline)
+    const ta = 6;
+    todayG.appendChild(mk('polygon', {
+      points: `${todayX - ta},0 ${todayX + ta},0 ${todayX},${ta * 1.6}`,
+      fill: COLORS.red
+    }));
+    // Triangle at bottom (pointing up)
+    todayG.appendChild(mk('polygon', {
+      points: `${todayX - ta},${H} ${todayX + ta},${H} ${todayX},${H - ta * 1.6}`,
+      fill: COLORS.red
+    }));
+    tlSvg.appendChild(todayG);
+  }
 
   // ── Events (clipped) ──────────────────────────────────────────────────
   // Recompute only when filter state changed; pure pan/zoom reuses the cached array.
@@ -516,42 +553,19 @@ function redraw() {
     }
   }
 
-  // ── Today marker (clipped to event area) ─────────────────────────────
-  const todayX = tsToX(Date.now());
-  if (todayX >= LABEL_W && todayX <= W) {
-    const todayG = mk('g', { 'clip-path': 'url(#cpE)' });
-    // Vertical line
-    todayG.appendChild(mk('line', {
-      x1: todayX, y1: 0, x2: todayX, y2: H,
-      stroke: COLORS.todayMarker, 'stroke-width': 1.5, 'stroke-dasharray': '4 3'
-    }));
-    // Triangle at top (pointing down into timeline)
-    const ta = 6;
-    todayG.appendChild(mk('polygon', {
-      points: `${todayX - ta},0 ${todayX + ta},0 ${todayX},${ta * 1.6}`,
-      fill: COLORS.todayMarker
-    }));
-    // Triangle at bottom (pointing up)
-    todayG.appendChild(mk('polygon', {
-      points: `${todayX - ta},${H} ${todayX + ta},${H} ${todayX},${H - ta * 1.6}`,
-      fill: COLORS.todayMarker
-    }));
-    tlSvg.appendChild(todayG);
-  }
-
   // ── Label column (always on top) ──────────────────────────────────────
   const lblG = mk('g');
-  lblG.appendChild(mk('rect', { x: 0, y: 0, width: LABEL_W, height: H, fill: COLORS.panelBg }));
-  lblG.appendChild(mk('line', { x1: LABEL_W, y1: 0, x2: LABEL_W, y2: H, stroke: COLORS.border, 'stroke-width': 1 }));
+  lblG.appendChild(mk('rect', { x: 0, y: 0, width: LABEL_W, height: H, fill: COLORS.lightGray }));
+  lblG.appendChild(mk('line', { x1: LABEL_W, y1: 0, x2: LABEL_W, y2: H, stroke: COLORS.slate, 'stroke-width': 1 }));
   // row label column
   visRows.forEach((r, i) => {
     const y  = isThemes ? themeY[r] : groupY[r];
     const rh = rowH(r);
     lblG.appendChild(mk('rect', {
       x: 0, y, width: LABEL_W, height: rh,
-      fill: i % 2 === 0 ? COLORS.stripeLight : COLORS.stripeDark
+      fill: COLORS.lightGray
     }));
-    lblG.appendChild(mk('line', { x1: 0, y1: y + rh, x2: LABEL_W, y2: y + rh, stroke: COLORS.border, 'stroke-width': 0.5 }));
+    lblG.appendChild(mk('line', { x1: 0, y1: y + rh, x2: LABEL_W, y2: y + rh, stroke: COLORS.slate, 'stroke-width': 0.5 }));
     lblG.appendChild(svgWrappedLabel(12, y + rh / 2, r, 17, { fill: rowClr(r), 'font-size': 12, 'font-weight': '500' }));
   });
   tlSvg.appendChild(lblG);
@@ -566,6 +580,7 @@ function redraw() {
   btmSvg.setAttribute('width', W);
   btmSvg.innerHTML = '';
   drawMonthAxis(btmSvg, W, BTM_H, true, 'cpBtm');
+  btmSvg.appendChild(mk('rect', { x: LABEL_W, y: 0, width: 0.5, height: BTM_H, fill: COLORS.slate })); // divider (see header)
 }
 
 

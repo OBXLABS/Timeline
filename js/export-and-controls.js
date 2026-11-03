@@ -20,11 +20,11 @@ wrap.addEventListener('mousemove', e => {
   crosshairG = mk('g', { 'pointer-events': 'none' });
   crosshairG.appendChild(mk('line', {
     x1: svgX, y1: 0, x2: svgX, y2: Math.max(0, svgY - CROSSHAIR_GAP),
-    stroke: COLORS.white, 'stroke-opacity': '0.3', 'stroke-width': 1
+    stroke: COLORS.black, 'stroke-opacity': '0.3', 'stroke-width': 1
   }));
   crosshairG.appendChild(mk('line', {
     x1: svgX, y1: svgY + CROSSHAIR_GAP, x2: svgX, y2: crosshairSvgH,
-    stroke: COLORS.white, 'stroke-opacity': '0.3', 'stroke-width': 1
+    stroke: COLORS.black, 'stroke-opacity': '0.3', 'stroke-width': 1
   }));
   if (evGRef) tlSvg.insertBefore(crosshairG, evGRef);
 
@@ -170,11 +170,11 @@ document.getElementById('export-go').addEventListener('click', () => {
       margin-bottom: 0.75in;
       margin-left: 0.75in;
     }
-    body  { margin: 0; background: ${COLORS.bgDark}; }
+    body  { margin: 0; background: ${COLORS.lightGray}; }
     svg   { display: block; width: 100%; height: auto; }
     #print-btn {
       position: fixed; top: 8px; right: 8px;
-      background: ${COLORS.accent}; color: ${COLORS.white};
+      background: ${COLORS.indigo}; color: ${COLORS.black};
       border: none; padding: 8px 18px;
       border-radius: 6px; cursor: pointer;
       font-size: 14px; font-family: system-ui, sans-serif;
@@ -214,8 +214,8 @@ function buildExportSVG(y1, y2) {
   const eTsToX = ts => (ts - exportStartTs) * exportScale + EXPORT_LABEL_W;
 
   // Same filter logic as redraw() — via shared isEventVisible()
-  const visGroups = groups.filter(g => groupVis.has(g));
-  const visEvs = events.filter(isEventVisible);
+  const visEvs    = events.filter(isEventVisible);
+  const visGroups = visibleGroups(visEvs);
 
   // Group Y positions (same logic as redraw)
   const expGroupY = {};
@@ -241,27 +241,27 @@ function buildExportSVG(y1, y2) {
   svg.appendChild(defs);
 
   // Background
-  svg.appendChild(mk('rect', { x: 0, y: 0, width: EXPORT_W, height: totalH, fill: COLORS.bgDark }));
+  svg.appendChild(mk('rect', { x: 0, y: 0, width: EXPORT_W, height: totalH, fill: COLORS.lightGray }));
 
   // Title bar
   const titleText = document.getElementById('sidebar-title-text').textContent;
-  svg.appendChild(mk('rect', { x: 0, y: 0, width: EXPORT_W, height: TITLE_H, fill: COLORS.panelBg }));
+  svg.appendChild(mk('rect', { x: 0, y: 0, width: EXPORT_W, height: TITLE_H, fill: COLORS.lightGray }));
   svg.appendChild(svgTxt(EXPORT_LABEL_W + 6, TITLE_H - 7, titleText, {
     fill: '#f59e0b', 'font-size': 14, 'font-weight': '700', 'letter-spacing': '0.04em'
   }));
 
   // Header (top axis)
-  svg.appendChild(mk('rect', { x: 0, y: TITLE_H, width: EXPORT_W, height: EXPORT_HDR_H, fill: COLORS.panelBg }));
+  svg.appendChild(mk('rect', { x: 0, y: TITLE_H, width: EXPORT_W, height: EXPORT_HDR_H, fill: COLORS.lightGray }));
   svg.appendChild(mk('line', {
     x1: 0, y1: TITLE_H + EXPORT_HDR_H, x2: EXPORT_W, y2: TITLE_H + EXPORT_HDR_H,
-    stroke: COLORS.border, 'stroke-width': 1
+    stroke: COLORS.slate, 'stroke-width': 1
   }));
   svg.appendChild(mk('line', {
     x1: EXPORT_LABEL_W, y1: TITLE_H, x2: EXPORT_LABEL_W, y2: TITLE_H + EXPORT_HDR_H,
-    stroke: COLORS.border, 'stroke-width': 1
+    stroke: COLORS.slate, 'stroke-width': 1
   }));
   svg.appendChild(svgTxt(12, TITLE_H + EXPORT_HDR_H / 2 + 4, 'CATEGORY', {
-    fill: COLORS.textDim, 'font-size': 10, 'font-weight': '700', 'letter-spacing': '0.08em'
+    fill: COLORS.slate, 'font-size': 10, 'font-weight': '700', 'letter-spacing': '0.08em'
   }));
   drawExportMonthAxis(svg, eTsToX, exportStartTs, exportEndTs,
     EXPORT_W, EXPORT_LABEL_W, TITLE_H, EXPORT_HDR_H, false, 'expCpHdr');
@@ -273,11 +273,10 @@ function buildExportSVG(y1, y2) {
     const rh = rowHeights[g] || ROW_H;
     bgG.appendChild(mk('rect', {
       x: EXPORT_LABEL_W, y, width: EXPORT_W - EXPORT_LABEL_W, height: rh,
-      fill: i % 2 === 0 ? COLORS.stripeDark : COLORS.bgDark
+      fill: COLORS.lightGray
     }));
-    bgG.appendChild(mk('line', {
-      x1: EXPORT_LABEL_W, y1: y + rh, x2: EXPORT_W, y2: y + rh,
-      stroke: COLORS.panelBg, 'stroke-width': 1
+    bgG.appendChild(mk('rect', { // row divider, matches the label column line (see rendering.js)
+      x: EXPORT_LABEL_W, y: y + rh - 0.25, width: EXPORT_W - EXPORT_LABEL_W, height: 0.25, fill: COLORS.slate
     }));
   });
   for (let yr = y1; yr <= y2 + 1; yr++) {
@@ -285,11 +284,27 @@ function buildExportSVG(y1, y2) {
     if (x >= EXPORT_LABEL_W && x <= EXPORT_W) {
       bgG.appendChild(mk('line', {
         x1: x, y1: contentOffY, x2: x, y2: contentOffY + contentH,
-        stroke: COLORS.border, 'stroke-width': 1
+        stroke: COLORS.slate, 'stroke-width': 1
       }));
     }
   }
   svg.appendChild(bgG);
+
+  // Today marker
+  const todayX = eTsToX(Date.now());
+  if (todayX >= EXPORT_LABEL_W && todayX <= EXPORT_W) {
+    const tG = mk('g', { 'clip-path': 'url(#expCpContent)' });
+    tG.appendChild(mk('line', {
+      x1: todayX, y1: contentOffY, x2: todayX, y2: contentOffY + contentH,
+      stroke: COLORS.red, 'stroke-width': 1.5, 'stroke-dasharray': '4 3'
+    }));
+    const ta = 5;
+    tG.appendChild(mk('polygon', {
+      points: `${todayX - ta},${contentOffY} ${todayX + ta},${contentOffY} ${todayX},${contentOffY + ta * 1.6}`,
+      fill: COLORS.red
+    }));
+    svg.appendChild(tG);
+  }
 
   // Events
   const evG = mk('g', { 'clip-path': 'url(#expCpContent)' });
@@ -312,58 +327,42 @@ function buildExportSVG(y1, y2) {
       if (maxCh > 1) {
         const label = ev.headline.length > maxCh ? ev.headline.slice(0, maxCh - 1) + '…' : ev.headline;
         evG.appendChild(svgTxt(lx, barTop + BAR_H / 2 + 4, label, {
-          fill: COLORS.white, 'font-size': 10, 'font-weight': '500'
+          fill: COLORS.black, 'font-size': 10, 'font-weight': '500'
         }));
       }
     }
   }
   svg.appendChild(evG);
 
-  // Today marker
-  const todayX = eTsToX(Date.now());
-  if (todayX >= EXPORT_LABEL_W && todayX <= EXPORT_W) {
-    const tG = mk('g', { 'clip-path': 'url(#expCpContent)' });
-    tG.appendChild(mk('line', {
-      x1: todayX, y1: contentOffY, x2: todayX, y2: contentOffY + contentH,
-      stroke: COLORS.todayMarker, 'stroke-width': 1.5, 'stroke-dasharray': '4 3'
-    }));
-    const ta = 5;
-    tG.appendChild(mk('polygon', {
-      points: `${todayX - ta},${contentOffY} ${todayX + ta},${contentOffY} ${todayX},${contentOffY + ta * 1.6}`,
-      fill: COLORS.todayMarker
-    }));
-    svg.appendChild(tG);
-  }
-
   // Label column (always on top of events)
   const lblG = mk('g');
   lblG.appendChild(mk('rect', {
-    x: 0, y: contentOffY, width: EXPORT_LABEL_W, height: contentH, fill: COLORS.panelBg
+    x: 0, y: contentOffY, width: EXPORT_LABEL_W, height: contentH, fill: COLORS.lightGray
   }));
   lblG.appendChild(mk('line', {
     x1: EXPORT_LABEL_W, y1: contentOffY, x2: EXPORT_LABEL_W, y2: contentOffY + contentH,
-    stroke: COLORS.border, 'stroke-width': 1
+    stroke: COLORS.slate, 'stroke-width': 1
   }));
   visGroups.forEach((g, i) => {
     const y  = contentOffY + expGroupY[g];
     const rh = rowHeights[g] || ROW_H;
     lblG.appendChild(mk('rect', {
       x: 0, y, width: EXPORT_LABEL_W, height: rh,
-      fill: i % 2 === 0 ? COLORS.stripeLight : COLORS.stripeDark
+      fill: COLORS.lightGray
     }));
     lblG.appendChild(mk('line', {
       x1: 0, y1: y + rh, x2: EXPORT_LABEL_W, y2: y + rh,
-      stroke: COLORS.border, 'stroke-width': 0.5
+      stroke: COLORS.slate, 'stroke-width': 0.5
     }));
-    lblG.appendChild(svgWrappedLabel(12, y + rh / 2, g, 17, { fill: COLORS.textLight, 'font-size': 11, 'font-weight': '500' }));
+    lblG.appendChild(svgWrappedLabel(12, y + rh / 2, g, 17, { fill: COLORS.black, 'font-size': 11, 'font-weight': '500' }));
   });
   svg.appendChild(lblG);
 
   // Bottom axis
   const btmY = contentOffY + contentH;
-  svg.appendChild(mk('rect', { x: 0, y: btmY, width: EXPORT_W, height: EXPORT_BTM_H, fill: COLORS.panelBg }));
+  svg.appendChild(mk('rect', { x: 0, y: btmY, width: EXPORT_W, height: EXPORT_BTM_H, fill: COLORS.lightGray }));
   svg.appendChild(mk('line', {
-    x1: 0, y1: btmY, x2: EXPORT_W, y2: btmY, stroke: COLORS.border, 'stroke-width': 1
+    x1: 0, y1: btmY, x2: EXPORT_W, y2: btmY, stroke: COLORS.slate, 'stroke-width': 1
   }));
   drawExportMonthAxis(svg, eTsToX, exportStartTs, exportEndTs,
     EXPORT_W, EXPORT_LABEL_W, btmY, EXPORT_BTM_H, true, 'expCpBtm');
@@ -390,21 +389,21 @@ function drawExportMonthAxis(svgEl, eTsToX, startTs, endTs, W, LW, axisY, axisH,
     const isJuly  = mo === 6;
     const isQuart = mo === 3 || mo === 9;
     const tickLen = isJan ? 16 : isJuly ? 10 : isQuart ? 7 : 4;
-    const stroke  = isJan ? COLORS.textSubtle : (isJuly || isQuart) ? COLORS.textMuted : COLORS.border;
+    const stroke  = isJan ? COLORS.slate : (isJuly || isQuart) ? COLORS.slate : COLORS.slate;
 
     if (x >= LW - 1 && x <= W + 1) {
       if (fromBottom) {
         g.appendChild(mk('line', { x1: x, y1: axisY, x2: x, y2: axisY + tickLen, stroke, 'stroke-width': 2 }));
         if (isJan) {
           g.appendChild(svgTxt(x + 3, axisY + tickLen + 10, String(d.getFullYear()), {
-            fill: COLORS.textSubtle, 'font-size': 10, 'font-weight': '600'
+            fill: COLORS.slate, 'font-size': 10, 'font-weight': '600'
           }));
         }
       } else {
         g.appendChild(mk('line', { x1: x, y1: axisY + axisH - tickLen, x2: x, y2: axisY + axisH, stroke, 'stroke-width': 2 }));
         if (isJan) {
           g.appendChild(svgTxt(x + 3, axisY + axisH - tickLen - 3, String(d.getFullYear()), {
-            fill: COLORS.textSubtle, 'font-size': 10, 'font-weight': '600'
+            fill: COLORS.slate, 'font-size': 10, 'font-weight': '600'
           }));
         }
       }

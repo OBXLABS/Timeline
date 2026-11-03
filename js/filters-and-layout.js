@@ -12,8 +12,11 @@ function fmtDate(d) {
   return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 }
 
-const stripHtml  = s => s.replace(/<[^>]*>/g, '').trim();
-const extractUrl = s => { const m = s.match(/href=["']([^"']+)["']/i); return m ? m[1] : ''; };
+// "Skins, IIF; AbInt" → ['Skins', 'IIF', 'AbInt'] (commas, semicolons or line breaks; blanks and repeats dropped)
+const splitList  = s => [...new Set(String(s || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean))];
+
+// Filter item for events that list no project
+const NO_PROJECT = 'Other';
 
 // Read a worksheet into row objects, deduplicating repeated column names (Group_2, etc.)
 function sheetToRows(ws) {
@@ -79,18 +82,16 @@ function normalizeRow(row, format = 'abtec') {
   const base = {
     startRaw,
     endRaw,
-    headline:    stripHtml(g('title', 'headline', 'name', 'event')),
-    headlineUrl:       extractUrl(g('headline', 'name', 'event')),
+    headline:    g('title', 'headline', 'name', 'event'),
+    headlineUrl:       g('link'), // "Link" column: a plain URL
     headlineLinkLabel: g('headlinelinklabel'),
     description: g('text', 'description', 'desc', 'details', 'notes', 'body'),
-    project:     g('project', 'proj'),
   };
 
   if (format === 'abtec') {
     return { ...base,
-      group:   g('category', 'group', 'grp'), // Category col = main grouping
-      org:     g('group'),                    // Group col = organisational group
-      program: g('program', 'prog'),
+      group:    g('category'),            // Category col = main grouping (row)
+      projects: splitList(g('projects')), // Projects col = comma-separated list, e.g. "Skins, IIF"
       media:          g('media', 'url', 'video', 'image'),
       mediaThumbnail: g('mediathumbnail', 'thumbnail'),
       mediaCaption:   g('mediacaption', 'caption'),
@@ -104,6 +105,7 @@ function normalizeRow(row, format = 'abtec') {
       group:          g('group', 'grp', 'category'),
       org:            g('org', 'institution'),
       program:        g('program', 'prog'),
+      projects:       g('project', 'proj') ? [g('project', 'proj')] : [],
       fundingGroup:   g('fundinggroup', 'funding_group'),
       categoryGroup:  g('categorygroup', 'category_group'),
       media:          g('media', 'url', 'video', 'image'),
@@ -148,7 +150,7 @@ function parse(rows) {
       program:      nr.program      || '',
       fundingGroup:  nr.fundingGroup  || '',
       categoryGroup: nr.categoryGroup || '',
-      project:      nr.project      || '',
+      projects:     nr.projects     || [],
       media:          nr.media          || '',
       mediaThumbnail: nr.mediaThumbnail || '',
       mediaCaption:   nr.mediaCaption   || '',
@@ -167,13 +169,6 @@ function parse(rows) {
   }
 
   events = parsed;
-
-  // Build group → Event[] index for O(1) group lookup in syncCategoryVis/syncDimVis
-  eventsByGroup = new Map();
-  for (const ev of events) {
-    if (!eventsByGroup.has(ev.group)) eventsByGroup.set(ev.group, []);
-    eventsByGroup.get(ev.group).push(ev);
-  }
 
   const GROUP_ORDER = format === 'cv' ? [
     'Employment', 'Honors', 'Education',
@@ -210,7 +205,8 @@ function parse(rows) {
   const hasOrgDim = events.some(e => e.org && e.org !== e.group);
   orgs     = hasOrgDim ? [...new Set(events.map(e => e.org).filter(Boolean))].sort() : [];
   programs = [...new Set(events.map(e => e.program).filter(Boolean))].sort();
-  projects = [...new Set(events.map(e => e.project).filter(Boolean))].sort();
+  projects = [...new Set(events.flatMap(e => e.projects))].sort((a, b) => a.localeCompare(b));
+  if (projects.length && events.some(e => !e.projects.length)) projects.push(NO_PROJECT);
   groups.forEach((g, i) => groupColor[g] = PALETTE[i % PALETTE.length]);
   // Build category sub-groups (CV only — e.g. Supervision parent)
   let catSubGroups = null;
@@ -237,7 +233,7 @@ function parse(rows) {
   categoryGroups = [{ title: 'Category', items: groups, subGroups: catSubGroups }]; // seam for multi-document grouping
   dimLabels = format === 'cv'
     ? { orgs: 'Institution', programs: 'Funding Agency', projects: 'Role' }
-    : { orgs: 'Group',       programs: 'Program',        projects: 'Project' };
+    : { orgs: 'Group',       programs: 'Program',        projects: 'Projects' };
   // Build program sub-groups for CV (Tri-council, Concordia, then ungrouped)
   if (format === 'cv') {
     const FG_ORDER = ['Tri-council', 'Concordia'];
@@ -286,6 +282,7 @@ function parse(rows) {
   const fitAllScale = (W0 - LABEL_W - 20) / Math.max(maxTs - minTs, 86400000);
   const minEffMs = Math.max(86400000, 8 / fitAllScale);
 
+  laneMinEffMs = minEffMs;
   computeLanes(minEffMs);
   if (hasEnrichedData) computeThemeLanes(minEffMs);
   buildFilters();
@@ -294,38 +291,18 @@ function parse(rows) {
 
 // ── Filter UI ─────────────────────────────────────────────────────────────
 
-// Recompute groupVis: a category is checked iff at least one of its events
-// passes the current org/program/project filter.
-function syncCategoryVis() {
-  const noTagDims = orgs.length === 0 && programs.length === 0 && projects.length === 0;
-  groupVis = new Set(groups.filter(g => {
-    return (eventsByGroup.get(g) ?? []).some(e => {
-      if (noTagDims) return true;
-      const hasTag = e.org !== '' || e.program !== '' || e.project !== '';
-      if (!hasTag) return true;
-      return (e.org     !== '' && orgVis.has(e.org))         ||
-             (e.program !== '' && programVis.has(e.program)) ||
-             (e.project !== '' && projVis.has(e.project));
-    });
-  }));
-}
-
-// Ensure any org/program/project that has events in a checked category is also checked.
-function syncDimVis() {
-  for (const g of groupVis) {
-    for (const e of (eventsByGroup.get(g) ?? [])) {
-      if (e.org)     orgVis.add(e.org);
-      if (e.program) programVis.add(e.program);
-      if (e.project) projVis.add(e.project);
-    }
-  }
+// Re-run after any filter change: re-stack lanes for the visible events, then redraw.
+function applyFilters() {
+  _visEvsDirty = true;
+  computeLanes(laneMinEffMs);
+  redraw();
 }
 
 // ── Filter UI helpers ──────────────────────────────────────────────────────
 
 // Creates checkbox labels for `items` and appends them to `container`.
-// Shared by all filter layout renderers.
-function makeFilterItems(container, items, vis, colorFn, isDim, syncDims) {
+// Shared by all filter layout renderers. Each section filters on its own (see isEventVisible).
+function makeFilterItems(container, items, vis, colorFn) {
   for (const item of items) {
     const lbl = document.createElement('label');
     lbl.className = 'filter-label';
@@ -333,9 +310,7 @@ function makeFilterItems(container, items, vis, colorFn, isDim, syncDims) {
     cb.type = 'checkbox'; cb.checked = vis.has(item);
     cb.addEventListener('change', () => {
       if (cb.checked) vis.add(item); else vis.delete(item);
-      if (isDim) { syncCategoryVis(); buildFilters(); }
-      else if (syncDims && cb.checked) { syncDimVis(); buildFilters(); }
-      redraw();
+      applyFilters();
     });
     const dot = document.createElement('span');
     dot.className = 'filter-dot';
@@ -348,7 +323,7 @@ function makeFilterItems(container, items, vis, colorFn, isDim, syncDims) {
 }
 
 // Returns a .filter-all-none div with All + None buttons for a filter section.
-function makeAllNoneButtons(items, vis, isDim, syncDims) {
+function makeAllNoneButtons(items, vis) {
   const wrap = document.createElement('div');
   wrap.className = 'filter-all-none';
   const btnAll = document.createElement('button');
@@ -356,17 +331,14 @@ function makeAllNoneButtons(items, vis, isDim, syncDims) {
   btnAll.addEventListener('click', e => {
     e.stopPropagation();
     items.forEach(i => vis.add(i));
-    if (isDim)    syncCategoryVis();
-    if (syncDims) syncDimVis();
-    buildFilters(); redraw();
+    buildFilters(); applyFilters();
   });
   const btnNone = document.createElement('button');
   btnNone.textContent = 'None';
   btnNone.addEventListener('click', e => {
     e.stopPropagation();
     items.forEach(i => vis.delete(i));
-    if (isDim) syncCategoryVis();
-    buildFilters(); redraw();
+    buildFilters(); applyFilters();
   });
   wrap.append(btnAll, btnNone);
   return wrap;
@@ -382,7 +354,7 @@ function buildFiltersAccordion() {
   filDiv.appendChild(panelTitle);
 
   // Creates one collapsible accordion section and appends it to filDiv.
-  const addSection = (title, items, vis, colorFn, isDim, syncDims, subGroups = null) => {
+  const addSection = (title, items, vis, colorFn, subGroups = null) => {
     if (!accordionState.has(title)) accordionState.set(title, true);
     const isOpen = accordionState.get(title);
 
@@ -396,7 +368,7 @@ function buildFiltersAccordion() {
     arrow.textContent = '▶';
     const titleSpan = document.createElement('span');
     titleSpan.textContent = title;
-    const allNone = makeAllNoneButtons(items, vis, isDim, syncDims);
+    const allNone = makeAllNoneButtons(items, vis);
     hdr.append(arrow, titleSpan, allNone);
 
     const body = document.createElement('div');
@@ -422,7 +394,7 @@ function buildFiltersAccordion() {
 
           const sgBody = document.createElement('div');
           sgBody.className = 'accordion-body' + (sgOpen ? '' : ' collapsed');
-          makeFilterItems(sgBody, sg.items, vis, colorFn, isDim, syncDims);
+          makeFilterItems(sgBody, sg.items, vis, colorFn);
 
           sgHdr.addEventListener('click', () => {
             const open = !accordionState.get(sgKey);
@@ -434,11 +406,11 @@ function buildFiltersAccordion() {
           sgSec.append(sgHdr, sgBody);
           body.appendChild(sgSec);
         } else {
-          makeFilterItems(body, sg.items, vis, colorFn, isDim, syncDims);
+          makeFilterItems(body, sg.items, vis, colorFn);
         }
       }
     } else {
-      makeFilterItems(body, items, vis, colorFn, isDim, syncDims);
+      makeFilterItems(body, items, vis, colorFn);
     }
 
     hdr.addEventListener('click', e => {
@@ -453,11 +425,11 @@ function buildFiltersAccordion() {
     filDiv.appendChild(sec);
   };
 
-  if (orgs.length)     addSection(dimLabels.orgs,     orgs,     orgVis,     () => COLORS.textMuted, true,  false);
-  if (programs.length) addSection(dimLabels.programs, programs, programVis, () => COLORS.textMuted, true,  false, programGroups.length ? programGroups : null);
-  if (projects.length) addSection(dimLabels.projects, projects, projVis,    () => COLORS.textMuted, true,  false);
+  if (orgs.length)     addSection(dimLabels.orgs,     orgs,     orgVis,     () => COLORS.slate);
+  if (programs.length) addSection(dimLabels.programs, programs, programVis, () => COLORS.slate, programGroups.length ? programGroups : null);
+  if (projects.length) addSection(dimLabels.projects, projects, projVis,    () => COLORS.slate);
   for (const grp of categoryGroups) {
-    addSection(grp.title, grp.items, groupVis, g => groupColor[g], false, true, grp.subGroups || null);
+    addSection(grp.title, grp.items, groupVis, g => groupColor[g], grp.subGroups || null);
   }
 }
 
@@ -470,11 +442,11 @@ function buildFiltersThemes() {
   panelTitle.appendChild(cntEl);
   filDiv.appendChild(panelTitle);
 
-  const allNone = makeAllNoneButtons(themeRows, themeVis, false, false);
+  const allNone = makeAllNoneButtons(themeRows, themeVis);
   filDiv.appendChild(allNone);
 
   const body = document.createElement('div');
-  makeFilterItems(body, themeRows, themeVis, t => themeColor[t], false, false);
+  makeFilterItems(body, themeRows, themeVis, t => themeColor[t]);
   filDiv.appendChild(body);
 }
 

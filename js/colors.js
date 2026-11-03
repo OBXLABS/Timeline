@@ -1,22 +1,18 @@
 // ── Shared color palette ────────────────────────────────────────────────
-// Central place for every color re-used across the JS files (timeline
-// canvas, print/export SVG, status messages, etc). Change a value here
-// and it updates everywhere that color is used.
+// Every color re-used across the JS files (timeline canvas, PDF export,
+// status messages, etc). Each color appears once, named for what it looks
+// like; change a value here and it updates everywhere it is used.
 // Note: this is separate from the PALETTE array in config.js, which is
 // the per-category event-color rotation, not repeated UI chrome.
+// The page's CSS colors live in the :root block at the top of styles.css;
+// lightGray, red and yellow below match --color-light-gray, --color-red and --color-yellow.
 const COLORS = {
-  bgDark:      '#f0f3f5',  // main dark background (canvas, print background)
-  panelBg:     '#f0f3f5',  // header / row-label panel background
-  stripeDark:  '#f0f3f5',  // darker alternating row stripe
-  stripeLight: '#f0f3f5',  // lighter alternating row stripe / fine gridlines
-  border:      '#384853',  // panel borders, dividers, default gridlines/ticks
-  textDim:     '#384853',  // dim label text
-  textMuted:   '#384853',  // muted text, month-axis mid ticks
-  textSubtle:  '#384853',  // subtle text, month-axis year ticks
-  textLight:   '#000000',  // light label text
-  white:       '#000000',  // white text / strokes
-  accent:      '#6366f1',  // primary accent (links, buttons, highlights)
-  watermark:   '#fbab1b',  // past/future watermark text
-  success:     '#22c55e',  // success status text
-  error:       '#ef4444',  // error status text
+  lightGray: '#f0f3f5',  // canvas, header & label-panel backgrounds, row backgrounds, fine gridlines
+  slate:     '#384853',  // borders, row dividers, axis ticks, secondary / axis text
+  black:     '#000000',  // event labels, category labels in export, crosshair
+  indigo:    '#6366f1',  // links in the Storybox, PDF print button
+  red:       '#FD1901',  // today marker (same red as the title & sidebar drag handle)
+  yellow:    '#fbab1b',  // "the past / the future is Indigenous" watermarks
+  success:   '#22c55e',  // "✓ Loaded" status text
+  error:     '#ef4444',  // load-error status text
 };
