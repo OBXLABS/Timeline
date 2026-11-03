@@ -49,13 +49,6 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--colo
 .sf-subsection .print-btns .sb-btn { flex: 1; }
 
 
-/* View Section─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
-#sidebar-views-section { border-top: 1px solid var(--color-border); flex-shrink: 0; padding: 0 12px 8px; }
-#svs-save-row { display: flex; gap: 6px; padding: 8px 4px 4px; }
-#view-name-input { flex: 1; background: var(--color-light-gray); border: 1px solid var(--color-border); border-radius: 4px;  color: var(--color-text); font-size: 11px; padding: 5px 8px; outline: none; min-width: 0; }
-#view-name-input:focus { border-color: var(--color-accent); }
-#view-name-input::placeholder { color: var(--color-text-dim); }
-@media (hover: none), (max-width: 1024px) { #view-name-input { min-height: 44px; font-size: 16px; border-radius: 8px; } }
 .print-btns { display: flex; gap: 6px; }
 .sb-btn { flex: 1; text-align: center; padding: 5px 4px; font-size: 12px; }
 #search-box { padding: 10px 12px; flex-shrink: 0; border-bottom: 1px solid var(--color-border); }
