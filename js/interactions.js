@@ -209,7 +209,7 @@ async function openDrawer(ev) {
       html += `<div class="d-team-group"><span class="d-team-role">${label}</span>${namesHtml}</div>`;
     });
 
-    teamEl.innerHTML = `<h3>Research Team</h3>${html}`;
+    teamEl.innerHTML = `<h3>Instructor(s)</h3>${html}`;
   } else {
     teamEl.innerHTML = '';
   }
