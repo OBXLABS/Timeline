@@ -77,8 +77,6 @@ let logoGroupBottom = 590; // refined once image loads
 }());
 
 // ── DOM refs ─────────────────────────────────────────────────────────────
-const dz       = document.getElementById('drop-zone');
-const fi       = document.getElementById('file-input');
 const wrap     = document.getElementById('tl-wrap');
 const tlSvg    = document.getElementById('tl-svg');
 const hdrSvg   = document.getElementById('hdr-svg');

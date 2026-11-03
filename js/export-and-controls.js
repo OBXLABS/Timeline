@@ -88,72 +88,12 @@ window.addEventListener('focus',  () => { if (events.length) redraw(); });
 }
 
 // ── Auto-load ─────────────────────────────────────────────────────────────
-// Priority 1: the Google Sheet currently in the input box (default sheet,
-// or whichever one the user loaded last — see DEFAULT_GSHEET_URL above).
-// Priority 2: synthetic test data fallback if that fetch fails.
+// Always loads from DATA_SOURCE_URL (data-loaders.js). Progress and errors
+// are shown in the sidebar "Data" line and in the empty-state message.
 (async () => {
-  const initialGSheetUrl = gsheetInput.value.trim();
-  if (initialGSheetUrl) {
-    if (isGDocUrl(initialGSheetUrl)) await loadFromGDoc(initialGSheetUrl); else await loadFromGSheet(initialGSheetUrl);
-  }
-  if (!events.length) loadTestData();
+  if (isGDocUrl(DATA_SOURCE_URL)) await loadFromGDoc(DATA_SOURCE_URL);
+  else                            await loadFromGSheet(DATA_SOURCE_URL);
 })();
-
-// ── Synthetic test data ───────────────────────────────────────────────────
-function loadTestData() {
-  const rows = [
-    { 'start date': '01/15/12', 'end date': '06/30/12', headline: 'Project Kickoff',        description: 'Team assembled and initial project goals clearly established together.',          project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '03/01/12', 'end date': '09/15/12', headline: 'Research Phase',          description: 'Extensive field research and comprehensive literature review conducted.',           project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '07/01/12', 'end date': '12/31/12', headline: 'Prototype Build',         description: 'First interactive prototype built and tested with community members.',             project: 'Skins', group: 'AbTeC' },
-    { 'start date': '02/10/13', 'end date': '02/10/13', headline: 'Symposium',               description: 'Public symposium brought together scholars of Indigenous digital storytelling.',   project: 'IIF',   group: 'Events' },
-    { 'start date': '04/01/13', 'end date': '10/31/13', headline: 'Community Engagement',    description: 'Hands-on workshops delivered across five partner communities nationwide.',          project: 'Skins', group: 'AbTeC' },
-    { 'start date': '05/20/13', 'end date': '05/20/13', headline: 'Grant Award',             description: 'SSHRC Insight Grant awarded to support three years of research.',                  project: 'IIF',   group: 'Funding' },
-    { 'start date': '09/01/13', 'end date': '03/31/14', headline: 'Exhibition Design',       description: 'Full design and fabrication of large-scale interactive gallery installation.',     project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '01/10/14', 'end date': '01/10/14', headline: 'Partner Meeting',         description: 'Annual all-partner meeting convened in Vancouver to align priorities.',            project: 'Skins', group: 'Events' },
-    { 'start date': '04/15/14', 'end date': '08/15/14', headline: 'Summer Institute',        description: 'Intensive six-week program brought together an interdisciplinary student cohort.', project: 'Skins', group: 'AbTeC' },
-    { 'start date': '06/01/14', 'end date': '06/01/14', headline: 'Publication Released',    description: 'Co-authored volume on Indigenous media arts published by university press. www.jasonlewis.org',       project: 'IIF',   group: 'Outputs' },
-    { 'start date': '10/01/14', 'end date': '12/31/14', headline: 'Phase 2 Planning',        description: 'Strategic planning sessions held to scope the next major project phase.',          project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '01/01/15', 'end date': '06/30/15', headline: 'Software Development',   description: 'Focused development sprint produced a custom community storytelling platform.',    project: 'Skins', group: 'AbTeC' },
-    { 'start date': '03/15/15', 'end date': '03/15/15', headline: 'Conference Keynote',      description: 'Delivered keynote address at the ELO conference in Bergen, Norway.',              project: 'IIF',   group: 'Events' },
-    { 'start date': '07/01/15', 'end date': '12/31/15', headline: 'User Testing',            description: 'Iterative user testing cycles conducted with three distinct partner communities.', project: 'Skins', group: 'AbTeC' },
-    { 'start date': '09/10/15', 'end date': '09/10/15', headline: 'Funding Renewal',         description: 'Partnership infrastructure funding successfully renewed through CFI program.',     project: 'IIF',   group: 'Funding' },
-    { 'start date': '02/01/16', 'end date': '07/31/16', headline: 'Residency Program',       description: 'Launched artist-in-residence program, welcoming the inaugural creative cohort.',  project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '04/20/16', 'end date': '04/20/16', headline: 'Award Ceremony',          description: 'Recognized with national excellence award for outstanding contributions to media arts.', project: 'Skins', group: 'Events' },
-    { 'start date': '08/01/16', 'end date': '01/31/17', headline: 'Documentation',           description: 'Systematic archiving and documentation of all major project outputs completed.',   project: 'IIF',   group: 'Outputs' },
-    { 'start date': '01/15/17', 'end date': '07/15/17', headline: 'New Cohort',              description: 'Second student cohort onboarded with expanded interdisciplinary focus.',           project: 'Skins', group: 'AbTeC' },
-    { 'start date': '05/01/17', 'end date': '05/01/17', headline: 'Workshop Series',         description: 'Three-city workshop tour engaged over two hundred participants directly.',          project: 'IIF',   group: 'Events' },
-    { 'start date': '09/01/17', 'end date': '03/31/18', headline: 'Platform v2',             description: 'Major platform rebuild introduced new collaboration and publishing features.',     project: 'Skins', group: 'AbTeC' },
-    { 'start date': '11/15/17', 'end date': '11/15/17', headline: 'Journal Article',         description: 'Peer-reviewed article accepted and published in leading new media journal. www.jasonlewis.org',       project: 'IIF',   group: 'Outputs' },
-    { 'start date': '02/01/18', 'end date': '08/31/18', headline: 'International Tour',      description: 'Exhibition toured successfully across galleries in four different countries.',      project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '06/10/18', 'end date': '06/10/18', headline: 'Funding Secured',         description: 'New multi-year production grant awarded by the Canada Council for Arts.',         project: 'Skins', group: 'Funding' },
-    { 'start date': '10/01/18', 'end date': '04/30/19', headline: 'Evaluation Study',        description: 'Independent external evaluation assessed broad program impact and outcomes.',      project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '01/20/19', 'end date': '01/20/19', headline: 'Colloquium',              description: 'Intimate research colloquium convened twelve invited international scholars.',      project: 'IIF',   group: 'Events' },
-    { 'start date': '05/01/19', 'end date': '11/30/19', headline: 'Mobile App',              description: 'Companion mobile application developed to extend platform reach and access.',      project: 'Skins', group: 'AbTeC' },
-    { 'start date': '07/15/19', 'end date': '07/15/19', headline: 'Book Launch',             description: 'Celebrated launch of co-edited collection at well-attended public event.',         project: 'IIF',   group: 'Events' },
-    { 'start date': '03/01/20', 'end date': '09/30/20', headline: 'Remote Pivot',            description: 'All in-person programming successfully adapted for remote and online delivery.',   project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '05/15/20', 'end date': '05/15/20', headline: 'Virtual Exhibition',      description: 'Online exhibition attracted over eight thousand visitors from many countries.',    project: 'Skins', group: 'Events' },
-    { 'start date': '10/01/20', 'end date': '04/30/21', headline: 'Archival Project',        description: 'Digitization and structured archiving of rare historical community materials.',    project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '02/10/21', 'end date': '02/10/21', headline: 'Partnership Renewal',     description: 'Memoranda of Understanding renewed with three key university partners.',           project: 'Skins', group: 'Funding' },
-    { 'start date': '06/01/21', 'end date': '12/31/21', headline: 'Phase 3 Launch',          description: 'Third and most ambitious project phase officially launched with expanded team.',   project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '09/20/21', 'end date': '09/20/21', headline: 'Symposium',               description: 'Hybrid symposium reached two hundred participants across in-person and online.',   project: 'IIF',   group: 'Events' },
-    { 'start date': '01/01/22', 'end date': '06/30/22', headline: 'Curriculum Design',       description: 'New graduate-level curriculum modules developed and piloted with students.',       project: 'Skins', group: 'AbTeC' },
-    { 'start date': '04/01/22', 'end date': '04/01/22', headline: 'Grant Awarded',           description: 'SSHRC Partnership Grant of $2.4M awarded over a seven-year term.',               project: 'IIF',   group: 'Funding' },
-    { 'start date': '07/01/22', 'end date': '12/31/22', headline: 'Cohort 3',                description: 'Third student cohort of fourteen participants began intensive program.',           project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '10/15/22', 'end date': '10/15/22', headline: 'Conference Presentation', description: 'Research presented to international audience at ISEA 2022 in Barcelona.',         project: 'Skins', group: 'Events' },
-    { 'start date': '01/15/23', 'end date': '07/31/23', headline: 'Research Sprint',         description: 'Intensive six-month period of focused collaborative research and writing.',        project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '05/01/23', 'end date': '05/01/23', headline: 'Documentary Released',    description: 'Short documentary film released capturing the full scope of program impact. www.jasonlewis.org',     project: 'Skins', group: 'Outputs' },
-    { 'start date': '08/01/23', 'end date': '02/28/24', headline: 'Platform v3',             description: 'Next-generation platform rebuilt with integrated AI tools and new interface.',     project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '11/10/23', 'end date': '11/10/23', headline: 'Annual Gathering',        description: 'Network-wide annual gathering brought sixty participants from across Canada.',     project: 'IIF',   group: 'Events' },
-    { 'start date': '03/01/24', 'end date': '09/30/24', headline: 'Outreach Program',        description: 'Broad community outreach initiative delivered across five distinct regions.',      project: 'Skins', group: 'AbTeC' },
-    { 'start date': '06/15/24', 'end date': '06/15/24', headline: 'Award Nomination',        description: 'Project nominated for the prestigious Governor General Innovation Award.',        project: 'IIF',   group: 'Events' },
-    { 'start date': '10/01/24', 'end date': '03/31/25', headline: 'Evaluation Phase',        description: 'Scheduled mid-grant external evaluation assessed progress against objectives.',    project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '01/20/25', 'end date': '01/20/25', headline: 'Funding Renewal',         description: 'Phase 2 multi-year funding confirmed by both federal and provincial partners.',   project: 'Skins', group: 'Funding' },
-    { 'start date': '04/01/25', 'end date': '12/31/25', headline: 'Cohort 4',                description: 'Fourth student cohort launched with expanded Indigenous community partnerships.', project: 'IIF',   group: 'AbTeC' },
-    { 'start date': '07/10/25', 'end date': '07/10/25', headline: 'Summer Summit',           description: 'Annual summer research summit gathered all project leads and collaborators.',     project: 'Skins', group: 'Events' },
-    { 'start date': '09/01/25', 'end date': '02/28/26', headline: 'Final Report',            description: 'Preparing comprehensive final project report.', project: 'IIF',     group: 'Outputs' },
-  ];
-  parse(rows);
-}
 
 // ── Markdown Export ───────────────────────────────────────────────────────
 document.getElementById('btn-export-md').addEventListener('click', () => {

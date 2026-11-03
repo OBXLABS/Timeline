@@ -1,129 +1,19 @@
-// ── File loading ─────────────────────────────────────────────────────────
-dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('over');
-  if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
-});
-dz.addEventListener('click', () => fi.click());
-fi.addEventListener('change', e => { if (e.target.files[0]) load(e.target.files[0]); });
-
-// ── Plain-text CV parser (for cv.txt drop) ───────────────────────────────
-// Same 3-strategy logic as parseGDoc() but splits on tabs / 2+ spaces
-// instead of \xa0\xa0+, and works line-by-line on plain text.
-function parseCVText(text) {
-  const rows = [];
-  let group = null, lastRow = null;
-
-  for (const rawLine of text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.length < 2) continue;
-
-    // Section heading?
-    const key = line.toLowerCase().replace(/[\s\xa0]+/g, ' ').trim().replace(/:$/, '');
-    if (GDOC_SECTION_MAP[key]) { group = GDOC_SECTION_MAP[key]; lastRow = null; continue; }
-
-    if (!group) continue;
-
-    // Strategy 1: date prefix + tab or 2+ spaces
-    const sep = rawLine.match(/^(.+?)(?:\t+|\s{2,})(.+)$/);
-    if (sep) {
-      const cleanDate = sep[1].trim();
-      const rest      = sep[2].trim().replace(/\s*\{[^}]*\}\s*$/, '').trim();
-      const [start, end] = gdocParseDateRange(cleanDate);
-      if (start) {
-        const row = { 'start date': start, 'end date': end || start,
-          'headline': rest, 'description': '', 'group': group, 'project': GDOC_PROJECT_MAP[group] || '' };
-        rows.push(row); lastRow = row;
-        continue;
-      }
-    }
-
-    // Strategy 2: continuation line
-    const hasYear = /\b(19|20)\d{2}\b/.test(line);
-    if (lastRow && lastRow['group'] === group && !hasYear && line.length < 150) {
-      lastRow['description'] = lastRow['description'] ? lastRow['description'] + '  ' + line : line;
-      continue;
-    }
-
-    // Strategy 3: bibliography — extract year from text
-    const years = [...line.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m => parseInt(m[1]));
-    if (years.length) {
-      const year = years[years.length - 1];
-      const d = gdocFmt(year);
-      const row = { 'start date': d, 'end date': d,
-        'headline': gdocExtractTitle(line), 'description': line, 'group': group, 'project': GDOC_PROJECT_MAP[group] || '' };
-      rows.push(row); lastRow = row;
-    }
-  }
-  return rows;
-}
-
-function load(file) {
-  if (file.name.toLowerCase().endsWith('.txt')) {
-    const r = new FileReader();
-    r.onload = e => {
-      try {
-        const rows = parseCVText(e.target.result);
-        if (!rows.length) throw new Error('No CV sections recognised — check headings match expected format.');
-        parse(rows);
-      } catch (ex) { alert('Could not read file:\n' + ex.message); }
-    };
-    r.readAsText(file, 'utf-8');
-    return;
-  }
-  if (file.name.toLowerCase().endsWith('.js')) {
-    const r = new FileReader();
-    r.onload = e => {
-      try {
-        const text  = e.target.result;
-        const match = text.match(/window\.__TIMELINE_DATA__\s*=\s*(\[[\s\S]*?\]);\s*$/m);
-        if (!match) throw new Error('File does not contain window.__TIMELINE_DATA__ — is this a timeline data JS file?');
-        const rows = JSON.parse(match[1]);
-        parse(rows);
-      } catch (ex) { alert('Could not read file:\n' + ex.message); }
-    };
-    r.readAsText(file, 'utf-8');
-    return;
-  }
-  if (file.name.toLowerCase().endsWith('.csv')) {
-    const r = new FileReader();
-    r.onload = e => {
-      try {
-        const wb   = XLSX.read(e.target.result, { type: 'string' });
-        const rows = sheetToRows(wb.Sheets[wb.SheetNames[0]]);
-        parse(rows);
-      } catch (ex) { alert('Could not read file:\n' + ex.message); }
-    };
-    r.readAsText(file, 'utf-8');
-    return;
-  }
-  const r = new FileReader();
-  r.onload = e => {
-    try {
-      const wb   = XLSX.read(e.target.result, { type: 'binary' });
-      const rows = sheetToRows(wb.Sheets[wb.SheetNames[0]]);
-      parse(rows);
-    } catch (ex) { alert('Could not read file:\n' + ex.message); }
-  };
-  r.readAsBinaryString(file);
-}
-
 // ── Google Sheets loader ──────────────────────────────────────────────────
-const GSHEET_LS_KEY = 'timeline-gsheet-url';
 const GSHEET_PROXY  = 'https://api.allorigins.win/raw?url='; // CORS proxy — no default response caching (unlike corsproxy.io, which caches at the edge by default)
 
-// Default sheet shown on first load (until the user loads a different one,
-// at which point their choice is remembered in localStorage instead).
-const DEFAULT_GSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSm4iN6wJTrWnm0DGzig23MmxbfdL7-n6f81RJv8Z3WYvvDXYPsdnK_WuKyRH0HN1mTo4wiJubJ-5-/pubhtml';
+// The single data source for the timeline. Visitors cannot change it.
+// To point the site at a different sheet (or a published Google Doc CV), edit this URL.
+const DATA_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSm4iN6wJTrWnm0DGzig23MmxbfdL7-n6f81RJv8Z3WYvvDXYPsdnK_WuKyRH0HN1mTo4wiJubJ-5-/pubhtml';
 
-const gsheetInput  = document.getElementById('gsheet-input');
-const gsheetStatus = document.getElementById('gsheet-status');
-
-// Pre-fill from localStorage if the user has loaded a sheet before,
-// otherwise fall back to the default sheet (but don't fetch yet).
-const savedGSheetUrl = localStorage.getItem(GSHEET_LS_KEY);
-gsheetInput.value = savedGSheetUrl || DEFAULT_GSHEET_URL;
+// ── Load status (sidebar "Data" line + empty-state message) ───────────────
+const loadStatusEl = document.getElementById('load-status');
+const emptyMsgEl   = document.getElementById('empty-msg');
+function setLoadStatus(state, text) {
+  const color = state === 'ok' ? COLORS.success : state === 'error' ? COLORS.error : COLORS.textMuted;
+  loadStatusEl.textContent = text;
+  loadStatusEl.style.color = color;
+  if (state !== 'ok') emptyMsgEl.textContent = text;
+}
 
 function parseGSheetUrl(url) {
   url = url.trim();
@@ -141,10 +31,9 @@ function parseGSheetUrl(url) {
 
 async function loadFromGSheet(url) {
   const csvUrl = parseGSheetUrl(url);
-  if (!csvUrl) { gsheetStatus.textContent = 'Invalid URL'; gsheetStatus.style.color = COLORS.error; return; }
+  if (!csvUrl) { setLoadStatus('error', 'Data source URL is invalid'); return; }
 
-  gsheetStatus.textContent = 'Loading…';
-  gsheetStatus.style.color = COLORS.textMuted;
+  setLoadStatus('loading', 'Loading timeline…');
 
   const bust = `&t=${Date.now()}`;
   const tryFetch = async u => {
@@ -160,8 +49,7 @@ async function loadFromGSheet(url) {
     try {
       csvText = await tryFetch(GSHEET_PROXY + encodeURIComponent(csvUrl + bust));
     } catch (ex) {
-      gsheetStatus.textContent = 'Failed: ' + ex.message;
-      gsheetStatus.style.color = COLORS.error;
+      setLoadStatus('error', 'Couldn\'t load timeline (' + ex.message + '). Please refresh.');
       return;
     }
   }
@@ -170,12 +58,9 @@ async function loadFromGSheet(url) {
     const wb   = XLSX.read(csvText, { type: 'string' });
     const rows = sheetToRows(wb.Sheets[wb.SheetNames[0]]);
     parse(rows);
-    localStorage.setItem(GSHEET_LS_KEY, url);
-    gsheetStatus.textContent = '✓ Loaded';
-    gsheetStatus.style.color = COLORS.success;
+    setLoadStatus('ok', `✓ Loaded ${events.length} events`);
   } catch (ex) {
-    gsheetStatus.textContent = 'Parse error: ' + ex.message;
-    gsheetStatus.style.color = COLORS.error;
+    setLoadStatus('error', 'Couldn\'t read timeline data: ' + ex.message);
   }
 }
 
@@ -418,8 +303,7 @@ function parseGDoc(html) {
 }
 
 async function loadFromGDoc(url) {
-  gsheetStatus.textContent = 'Loading…';
-  gsheetStatus.style.color = COLORS.textMuted;
+  setLoadStatus('loading', 'Loading timeline…');
 
   // Ensure URL ends with /pub
   let pubUrl = url.trim();
@@ -441,8 +325,7 @@ async function loadFromGDoc(url) {
     try {
       html = await tryFetch(GSHEET_PROXY + encodeURIComponent(pubUrl + (pubUrl.includes('?') ? bust : `?${bust.slice(1)}`)));
     } catch (ex) {
-      gsheetStatus.textContent = 'Failed: ' + ex.message;
-      gsheetStatus.style.color = COLORS.error;
+      setLoadStatus('error', 'Couldn\'t load timeline (' + ex.message + '). Please refresh.');
       return;
     }
   }
@@ -451,26 +334,10 @@ async function loadFromGDoc(url) {
     const rows = parseGDoc(html);
     if (!rows.length) throw new Error('No CV sections found — is the doc published to the web?');
     parse(rows);
-    localStorage.setItem(GSHEET_LS_KEY, url);
-    gsheetStatus.textContent = `✓ Loaded ${rows.length} entries`;
-    gsheetStatus.style.color = COLORS.success;
+    setLoadStatus('ok', `✓ Loaded ${events.length} events`);
   } catch (ex) {
-    gsheetStatus.textContent = 'Parse error: ' + ex.message;
-    gsheetStatus.style.color = COLORS.error;
+    setLoadStatus('error', 'Couldn\'t read timeline data: ' + ex.message);
   }
 }
 
-document.getElementById('btn-gsheet-load').addEventListener('click', () => {
-  const url = gsheetInput.value.trim();
-  if (!url) return;
-  if (isGDocUrl(url)) loadFromGDoc(url); else loadFromGSheet(url);
-});
-
-gsheetInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const url = gsheetInput.value.trim();
-    if (!url) return;
-    if (isGDocUrl(url)) loadFromGDoc(url); else loadFromGSheet(url);
-  }
-});
 
