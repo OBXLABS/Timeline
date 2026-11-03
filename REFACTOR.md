@@ -3,6 +3,8 @@
 Each stage represents one refactoring cycle: an audit pass followed by a fix pass.
 Latest stage is at the top; earliest stage is at the bottom.
 
+> **Note:** `test.html` has since been removed from the project. References to it below are historical.
+
 ---
 
 # Optimization Refactor
