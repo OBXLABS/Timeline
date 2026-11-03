@@ -14,7 +14,7 @@ document.getElementById('btn-sidebar-toggle').addEventListener('click', () => {
   sidebarEl.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
 });
 
-// ── Filter section (Import/Export) collapse toggle ─────────────────────
+// ── File section (Data status / Export) collapse toggle ─────────────────────
 const sfToggle = document.getElementById('sf-toggle');
 const sfBody   = document.getElementById('sf-body');
 const sfArrow  = document.getElementById('sf-arrow');
