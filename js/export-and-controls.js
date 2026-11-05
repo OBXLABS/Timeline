@@ -247,7 +247,7 @@ function buildExportSVG(y1, y2) {
   const titleText = document.getElementById('sidebar-title-text').textContent;
   svg.appendChild(mk('rect', { x: 0, y: 0, width: EXPORT_W, height: TITLE_H, fill: COLORS.lightGray }));
   svg.appendChild(svgTxt(EXPORT_LABEL_W + 6, TITLE_H - 7, titleText, {
-    fill: '#f59e0b', 'font-size': 14, 'font-weight': '700', 'letter-spacing': '0.04em'
+    fill: COLORS.red, 'font-size': 14, 'font-weight': '700', 'letter-spacing': '0.04em' // same red as the on-screen title
   }));
 
   // Header (top axis)
@@ -266,7 +266,7 @@ function buildExportSVG(y1, y2) {
   drawExportMonthAxis(svg, eTsToX, exportStartTs, exportEndTs,
     EXPORT_W, EXPORT_LABEL_W, TITLE_H, EXPORT_HDR_H, false, 'expCpHdr');
 
-  // Row backgrounds + year grid lines
+  // Row backgrounds + dividers (no vertical year lines, matching the screen)
   const bgG = mk('g', { 'clip-path': 'url(#expCpContent)' });
   visGroups.forEach((g, i) => {
     const y  = contentOffY + expGroupY[g];
@@ -279,15 +279,6 @@ function buildExportSVG(y1, y2) {
       x: EXPORT_LABEL_W, y: y + rh - 0.25, width: EXPORT_W - EXPORT_LABEL_W, height: 0.25, fill: COLORS.slate
     }));
   });
-  for (let yr = y1; yr <= y2 + 1; yr++) {
-    const x = eTsToX(new Date(yr, 0, 1).getTime());
-    if (x >= EXPORT_LABEL_W && x <= EXPORT_W) {
-      bgG.appendChild(mk('line', {
-        x1: x, y1: contentOffY, x2: x, y2: contentOffY + contentH,
-        stroke: COLORS.slate, 'stroke-width': 1
-      }));
-    }
-  }
   svg.appendChild(bgG);
 
   // Today marker
