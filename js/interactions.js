@@ -63,8 +63,7 @@ function getVisibleEvents() {
 async function renderMedia(ev, container) {
   container.innerHTML = '';
 
-  const url   = ev.media || '';
-  const thumb = ev.mediaThumbnail || '';
+  const url      = ev.media || '';
   const targetId = ev.id;
 
   const metaHtml = (caption, credit) => {
@@ -84,26 +83,20 @@ async function renderMedia(ev, container) {
     if (vimeoMatch) vidHtml = `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" allowfullscreen></iframe>`;
   }
 
-  // Case 1: video present → embed only, ignore thumbnail
+  // Case 1: YouTube / Vimeo video
   if (vidHtml) {
-    container.innerHTML = vidHtml + metaHtml(ev.mediaCaption, ev.mediaCredit);
+    container.innerHTML = vidHtml + metaHtml(ev.mediaCaption);
     return;
   }
 
-  // Case 1b: direct thumbnail URL → show image (no video)
-  if (thumb && /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(thumb)) {
-    container.innerHTML = `<img src="${thumb}" alt="${ev.mediaCaption || ''}">${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
-    return;
-  }
-
-  // Case 2: direct image URL in media
+  // Case 2: direct image file
   if (/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)) {
-    container.innerHTML = `<img src="${url}" alt="${ev.mediaCaption || ''}">${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
+    container.innerHTML = `<img src="${url}" alt="${ev.mediaCaption || ''}">${metaHtml(ev.mediaCaption)}`;
     return;
   }
 
-  // Case 3: Flickr → async noembed for image (check media url first, then thumbnail)
-  const flickrUrl = /flickr\.com/.test(url) ? url : /flickr\.com/.test(thumb) ? thumb : null;
+  // Case 3: Flickr photo page → image looked up via noembed (photographer name shown as credit)
+  const flickrUrl = /flickr\.com/.test(url) ? url : null;
   if (flickrUrl) {
     container.innerHTML = '<div class="d-media-caption">Loading…</div>';
     try {
@@ -113,10 +106,10 @@ async function renderMedia(ev, container) {
       const imgHtml = imgUrl
         ? `<img src="${imgUrl}" alt="${data.title || ''}">`
         : `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>`;
-      container.innerHTML = imgHtml + metaHtml(ev.mediaCaption, ev.mediaCredit || data.author_name);
+      container.innerHTML = imgHtml + metaHtml(ev.mediaCaption, data.author_name);
     } catch {
       if (activeDrawerId === targetId)
-        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>${metaHtml(ev.mediaCaption, ev.mediaCredit)}`;
+        container.innerHTML = `<a href="${flickrUrl}" target="_blank" style="color:${COLORS.indigo}">View photo ↗</a>${metaHtml(ev.mediaCaption)}`;
     }
     return;
   }

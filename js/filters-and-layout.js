@@ -92,10 +92,8 @@ function normalizeRow(row, format = 'abtec') {
     return { ...base,
       group:    g('category'),            // Category col = main grouping (row)
       projects: splitList(g('projects')), // Projects col = comma-separated list, e.g. "Skins, IIF"
-      media:          g('media', 'url', 'video', 'image'),
-      mediaThumbnail: g('mediathumbnail', 'thumbnail'),
+      media:          g('media', 'url', 'video', 'image'), // one link: YouTube/Vimeo video, image file, or Flickr photo
       mediaCaption:   g('mediacaption', 'caption'),
-      mediaCredit:    g('mediacredit', 'credit'),
       teamMembers:    g('teammembers', 'team', 'members'),
       funders:        g('funders', 'funder'),
     };
@@ -108,10 +106,8 @@ function normalizeRow(row, format = 'abtec') {
       projects:       g('project', 'proj') ? [g('project', 'proj')] : [],
       fundingGroup:   g('fundinggroup', 'funding_group'),
       categoryGroup:  g('categorygroup', 'category_group'),
-      media:          g('media', 'url', 'video', 'image'),
-      mediaThumbnail: g('mediathumbnail', 'thumbnail'),
+      media:          g('media', 'url', 'video', 'image'), // one link: YouTube/Vimeo video, image file, or Flickr photo
       mediaCaption:   g('mediacaption', 'caption'),
-      mediaCredit:    g('mediacredit', 'credit'),
       teamMembers:    g('teammembers', 'team', 'members'),
       funders:        g('funders', 'funder'),
     };
@@ -152,9 +148,7 @@ function parse(rows) {
       categoryGroup: nr.categoryGroup || '',
       projects:     nr.projects     || [],
       media:          nr.media          || '',
-      mediaThumbnail: nr.mediaThumbnail || '',
       mediaCaption:   nr.mediaCaption   || '',
-      mediaCredit:    nr.mediaCredit    || '',
       teamMembers:    nr.teamMembers    || '',
       funders:        nr.funders        || '',
       themes:        Array.isArray(r.themes)        ? r.themes        : [],
