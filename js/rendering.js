@@ -62,9 +62,15 @@ function fitView() {
   redraw();
 }
 
+// End of the timeline: Jan 1 two years after the later of today / the last event's end,
+// so the axis always shows one full extra year (e.g. latest date in 2026 → axis runs through 2027).
+function axisEndTs() {
+  return new Date(new Date(Math.max(Date.now(), maxTs)).getFullYear() + 2, 0, 1).getTime();
+}
+
 function fitAll() {
   const W     = wrap.clientWidth;
-  const range = Math.max(Math.max(Date.now(), maxTs) - AXIS_START, 86400000); // through today or the last event's end, whichever is later
+  const range = Math.max(axisEndTs() - AXIS_START, 86400000);
   scale = (W - LABEL_W - 20) / range;
   panX  = -(AXIS_START - minTs) * scale;
   redraw();
@@ -179,8 +185,8 @@ function generateTicks(addFn, start, end) {
 // ── Month axis (top or bottom) ────────────────────────────────────────────
 // fromBottom=false → ticks hang down from top edge; fromBottom=true → ticks rise from bottom edge
 function drawMonthAxis(svgEl, W, axisH, fromBottom, cpId) {
-  const last  = new Date(Math.max(Date.now(), maxTs));                // today, or the latest event end if that is later
-  const end   = new Date(last.getFullYear(), last.getMonth() + 1, 1); // start of the month after
+  const endTs = axisEndTs();
+  const end   = new Date(new Date(endTs).getFullYear() - 1, 11, 1);    // last tick: December of the extra year
   const defs  = mk('defs');
   const cp    = mk('clipPath', { id: cpId });
   cp.appendChild(mk('rect', { x: LABEL_W, y: 0, width: W - LABEL_W, height: axisH }));
