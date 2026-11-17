@@ -16,7 +16,49 @@ function fmtDate(d) {
 const splitList  = s => [...new Set(String(s || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean))];
 
 // Filter item for events that list no project
-const NO_PROJECT = 'Other';
+const NO_PROJECT = 'No project';
+
+// Display order of the AbTeC dropdowns (same lists as the "Lists" tab of the Google Sheet).
+// Names not listed here still work; they are shown after these, A–Z.
+const CATEGORY_ORDER = [
+  'Workshops',
+  'Symposia/Partnership Meetings',
+  'Residencies/Exhibitions',
+  'Guest Lectures/Artist Talks',
+  'Productions',
+  'Press/Reviews',
+  'Awards',
+  'Other',
+  'Dissemination',                     // pending: Jason to decide whether to cut it
+  'Illustrating the Future Imaginary', // pending: Jason to decide whether to cut it
+];
+const PROJECT_ORDER = [
+  'Abundant Intelligences',
+  'Skins',
+  'SAVE Co-Productions',               // pending: Skawennati to confirm scope
+  'AbTeC Gallery',
+  'AbTeC',
+  'IIF',
+  'Obx Labs',
+];
+
+// Old names still found in some rows → current names
+const RENAMED = {
+  'Symposia and Partnership Meetings': 'Symposia/Partnership Meetings',
+  'Guest Lectures and Artist Talks':   'Guest Lectures/Artist Talks',
+  'Archive':                           'Other',
+  'AbInt':                             'Abundant Intelligences',
+};
+const rename = s => RENAMED[s] || s;
+
+// Sort names by a fixed order list; unlisted names go last, A–Z
+const byOrder = order => (a, b) => {
+  const ai = order.indexOf(a), bi = order.indexOf(b);
+  if (ai === -1 && bi === -1) return a.localeCompare(b);
+  if (ai === -1) return 1;
+  if (bi === -1) return -1;
+  return ai - bi;
+};
 
 // Read a worksheet into row objects, deduplicating repeated column names (Group_2, etc.)
 function sheetToRows(ws) {
@@ -90,8 +132,8 @@ function normalizeRow(row, format = 'abtec') {
 
   if (format === 'abtec') {
     return { ...base,
-      group:    g('category'),            // Category col = main grouping (row)
-      projects: splitList(g('projects')), // Projects col = comma-separated list, e.g. "Skins, IIF"
+      group:    rename(g('category')),                 // Category col = main grouping (row)
+      projects: splitList(g('projects')).map(rename),  // Projects col = comma-separated list, e.g. "Skins, IIF"
       media:          g('media', 'url', 'video', 'image'), // one link: YouTube/Vimeo video, image file, or Flickr photo
       mediaCaption:   g('mediacaption', 'caption'),
       teamMembers:    g('teammembers', 'team', 'members'),
@@ -178,28 +220,13 @@ function parse(rows) {
     'Courses Taught',
     'Postdoc', 'PhD', 'Masters', 'Grad Certificate', 'Undergraduate',
     'Service',
-  ] : [
-    'Workshops',
-    'Symposia and Partnership Meetings',
-    'Residencies/Exhibitions',
-    'Guest Lectures and Artist Talks',
-    'Illustrating the Future Imaginary',
-    'Archive',
-    'Dissemination',
-    'Press/Reviews',
-  ];
-  groups = [...new Set(events.map(e => e.group))].sort((a, b) => {
-    const ai = GROUP_ORDER.indexOf(a), bi = GROUP_ORDER.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+  ] : CATEGORY_ORDER;
+  groups = [...new Set(events.map(e => e.group))].sort(byOrder(GROUP_ORDER));
   // Only show org/program/project filters when they are distinct from category
   const hasOrgDim = events.some(e => e.org && e.org !== e.group);
   orgs     = hasOrgDim ? [...new Set(events.map(e => e.org).filter(Boolean))].sort() : [];
   programs = [...new Set(events.map(e => e.program).filter(Boolean))].sort();
-  projects = [...new Set(events.flatMap(e => e.projects))].sort((a, b) => a.localeCompare(b));
+  projects = [...new Set(events.flatMap(e => e.projects))].sort(byOrder(PROJECT_ORDER));
   if (projects.length && events.some(e => !e.projects.length)) projects.push(NO_PROJECT);
   groups.forEach((g, i) => groupColor[g] = PALETTE[i % PALETTE.length]);
   // Build category sub-groups (CV only — e.g. Supervision parent)
@@ -280,7 +307,28 @@ function parse(rows) {
   computeLanes(minEffMs);
   if (hasEnrichedData) computeThemeLanes(minEffMs);
   buildFilters();
-  fitAll();
+  fitSidebarToLabels();
+  startView();
+}
+
+// Widen the sidebar (desktop only) so the longest filter name — e.g. "Symposia/Partnership Meetings" —
+// shows in full instead of being cut off with "…". Never narrower than the CSS default, never wider than 520px
+// (the resize handle's limit). Works for new dropdown options too, since it measures whatever names are loaded.
+function fitSidebarToLabels() {
+  if (window.matchMedia('(hover: none), (max-width: 1024px)').matches) return; // mobile: fixed-width slide-out panel
+  const sidebar = document.getElementById('sidebar');
+  const ctx = document.createElement('canvas').getContext('2d');
+  let needed = sidebar.offsetWidth;
+  for (const span of filDiv.querySelectorAll('.filter-label > span:last-child')) {
+    const cs = getComputedStyle(span);
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const textW = ctx.measureText(span.textContent).width;
+    // Space taken by padding, checkbox, colour dot and scrollbar: measured from the label itself when it's
+    // visible, otherwise (collapsed section) a safe estimate.
+    const overhead = span.clientWidth > 0 ? sidebar.offsetWidth - span.clientWidth : 80;
+    needed = Math.max(needed, Math.ceil(textW + overhead + 6)); // +6: small safety margin
+  }
+  sidebar.style.width = Math.min(520, needed) + 'px';
 }
 
 // ── Filter UI ─────────────────────────────────────────────────────────────

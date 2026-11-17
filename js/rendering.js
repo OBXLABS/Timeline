@@ -68,6 +68,16 @@ function axisEndTs() {
   return new Date(new Date(Math.max(Date.now(), maxTs)).getFullYear() + 2, 0, 1).getTime();
 }
 
+// Opening view: the "Fit" zoom level × START_ZOOM, centred on today (same as pressing "Today").
+const START_ZOOM = 1.2; // 1.2 = 20% more zoomed in than "Fit"
+function startView() {
+  LABEL_W = computeLabelW();
+  const W     = wrap.clientWidth;
+  const range = Math.max(axisEndTs() - AXIS_START, 86400000);
+  scale = (W - LABEL_W - 20) / range * START_ZOOM;
+  doToday();
+}
+
 function fitAll() {
   const W     = wrap.clientWidth;
   const range = Math.max(axisEndTs() - AXIS_START, 86400000);
