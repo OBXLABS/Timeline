@@ -307,29 +307,52 @@ function parse(rows) {
   computeLanes(minEffMs);
   if (hasEnrichedData) computeThemeLanes(minEffMs);
   buildFilters();
-  fitSidebarToLabels();
+  fitSidebarToLabels([...groups, ...projects, ...orgs, ...programs]);
   startView();
 }
 
-// Widen the sidebar (desktop only) so the longest filter name — e.g. "Symposia/Partnership Meetings" —
-// shows in full instead of being cut off with "…". Never narrower than the CSS default, never wider than 520px
-// (the resize handle's limit). Works for new dropdown options too, since it measures whatever names are loaded.
-function fitSidebarToLabels() {
+// Widen the sidebar (desktop only) so every filter name — e.g. "Symposia/Partnership Meetings" — shows in full
+// instead of being cut off with "…". It builds hidden copies of real filter rows (same checkbox, colour dot,
+// font and scrollbar as the visible ones), measures how much text is cut off, and widens by that much.
+// Runs twice: once at page open using the known dropdown names, so the menu is already the right width while
+// the data is loading, and again after loading in case the sheet has a name not in those lists.
+// Never narrows the menu, never goes past 520px (the resize handle's limit).
+function fitSidebarToLabels(names) {
   if (window.matchMedia('(hover: none), (max-width: 1024px)').matches) return; // mobile: fixed-width slide-out panel
   const sidebar = document.getElementById('sidebar');
-  const ctx = document.createElement('canvas').getContext('2d');
-  let needed = sidebar.offsetWidth;
-  for (const span of filDiv.querySelectorAll('.filter-label > span:last-child')) {
-    const cs = getComputedStyle(span);
-    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-    const textW = ctx.measureText(span.textContent).width;
-    // Space taken by padding, checkbox, colour dot and scrollbar: measured from the label itself when it's
-    // visible, otherwise (collapsed section) a safe estimate.
-    const overhead = span.clientWidth > 0 ? sidebar.offsetWidth - span.clientWidth : 80;
-    needed = Math.max(needed, Math.ceil(textW + overhead + 6)); // +6: small safety margin
+  const probe = document.createElement('div');
+  probe.style.cssText = 'visibility:hidden;height:0;overflow:hidden';
+  for (const name of names) {
+    const lbl = document.createElement('label');
+    lbl.className = 'filter-label';
+    const cb  = document.createElement('input'); cb.type = 'checkbox';
+    const dot = document.createElement('span');  dot.className = 'filter-dot';
+    const txt = document.createElement('span');  txt.textContent = name;
+    txt.style.flex = '1 1 0'; // fill the row, so its width = the space a name gets
+    lbl.append(cb, dot, txt);
+    probe.appendChild(lbl);
   }
-  sidebar.style.width = Math.min(520, needed) + 'px';
+  const prevOverflow = filDiv.style.overflowY;
+  filDiv.style.overflowY = 'scroll';     // include the scrollbar the full filter list will have
+  filDiv.appendChild(probe);
+  // Exact (sub-pixel) text width vs the space available; negative = room to spare.
+  const SPARE = 4; // keep at least 4px of room after the longest name
+  let shortBy = -Infinity;
+  const range = document.createRange();
+  for (const txt of probe.querySelectorAll('span:last-child')) {
+    range.selectNodeContents(txt);
+    shortBy = Math.max(shortBy, range.getBoundingClientRect().width - txt.getBoundingClientRect().width);
+  }
+  probe.remove();
+  filDiv.style.overflowY = prevOverflow;
+  if (shortBy + SPARE <= 0) return; // everything already fits with room to spare
+  sidebar.style.width = Math.min(520, Math.ceil(sidebar.getBoundingClientRect().width + shortBy + SPARE)) + 'px';
+  if (events.length) redraw(); // timeline already drawn → redraw at the new width
 }
+
+// At page open: size the menu for the known dropdown names (fonts first, so the text is measured in its real font).
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() =>
+  fitSidebarToLabels([...CATEGORY_ORDER, ...PROJECT_ORDER, NO_PROJECT]));
 
 // ── Filter UI ─────────────────────────────────────────────────────────────
 

@@ -19,10 +19,10 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--colo
 
 
 /* Sidebar─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
-#sidebar { width: 220px; min-width: 120px; max-width: 520px; background: var(--color-light-gray); border-right: 1px solid var(--color-light-gray); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+#sidebar { width: 250px; /* fits the longest filter name, so the menu doesn't jump wider after loading; fitSidebarToLabels() still widens it if a longer name is added */ min-width: 120px; max-width: 520px; background: var(--color-light-gray); border-right: 1px solid var(--color-light-gray); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 #sidebar-resizer { width: 5px; background: var(--color-red); cursor: col-resize; flex-shrink: 0; transition: background 0.15s; }
 #sidebar-resizer:hover, #sidebar-resizer.dragging { background: var(--color-yellow); }
-#sidebar-title { position: relative; padding: 8px 20px 8px 20px; font-size: 17px; font-weight: 700; letter-spacing: 0.02em; color: var(--color-red); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+#sidebar-title { position: relative; padding: 8px 20px 8px 20px; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; color: var(--color-red); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
 #sidebar-return { padding: 10px 12px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
 #btn-return-abtec { display: block; text-decoration: none; }
 #sidebar-controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
