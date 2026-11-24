@@ -133,7 +133,9 @@ async function openDrawer(ev) {
     ? `${fmtDate(ev.start)} → ${fmtDate(ev.end)}`
     : fmtDate(ev.start);
   // Trust assumption: data is user-controlled (own xlsx/GSheet); ev.group is not sanitized.
-  document.getElementById('d-meta').innerHTML = `<div>${duration}</div><div>${ev.group}</div>`;
+  // Projects line (above the category): all of the event's projects, e.g. "Skins, Abundant Intelligences"; left out if it has none.
+  const projLine = ev.projects && ev.projects.length ? `${ev.projects.join(', ')}<br>` : '';
+  document.getElementById('d-meta').innerHTML = `<div>${duration}</div><div class="d-meta-tags">${projLine}${ev.group}</div>`;
   document.getElementById('d-desc').innerHTML = linkify(ev.description || '');
   const moreEl = document.getElementById('d-more');
   moreEl.innerHTML = ev.headlineUrl
